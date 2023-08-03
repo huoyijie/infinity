@@ -6,6 +6,7 @@ import ColorContext from './ColorContext';
 import OpacityContext from './OpacityContext';
 import Cancel from './assets/Cancel';
 import Sun from './assets/Sun'
+import SettingContext from './SettingContext';
 
 function toRGB(color) {
   switch (color) {
@@ -20,12 +21,11 @@ function toRGB(color) {
   }
 }
 
-export default function () {
+export default function ({ showColors, showOpacity }) {
   const WB = useContext(WBContext);
   const [selectedColor, setSelectedColor] = useState('black');
-  const [showColors, setShowColors] = useState(false);
   const [opacity, setOpacity] = useState(100);
-  const [showOpacity, setShowOpacity] = useState(false);
+  const { setShowColors, setShowOpacity, resetAll } = useContext(SettingContext);
 
   const colorClass = (color) => {
     let c = 'inline-block w-10 h-10 rounded';
@@ -49,6 +49,7 @@ export default function () {
       <OpacityContext.Provider value={opacity}>
         <div className="flex flex-row gap-1">
           <Button Icon={Color} onClick={() => {
+            resetAll();
             setShowColors(true);
           }} />
           {showColors && (
@@ -64,7 +65,10 @@ export default function () {
           )}
         </div>
         <div className="flex flex-row gap-1">
-          <Button Icon={Sun} onClick={() => setShowOpacity(true)} />
+          <Button Icon={Sun} onClick={() => {
+            resetAll();
+            setShowOpacity(true);
+          }} />
           {showOpacity && (
             <>
               <div className={`rounded h-10 p-2 bg-[${toRGB(selectedColor)}]`} style={{ opacity: opacity + '%' }}>
