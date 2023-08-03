@@ -99,7 +99,7 @@ const WB = {
     // 初始化画板
     this.redraw();
   },
-  
+
   // 设置画笔颜色
   setColor(color) {
     this.pen.color = color;
@@ -126,7 +126,7 @@ const WB = {
       );
     }
   },
-  
+
   // 画线段
   drawLine(pen, x0, y0, x1, y1) {
     this.cxt.beginPath();
@@ -137,7 +137,7 @@ const WB = {
     this.cxt.stroke();
     this.cxt.closePath();
   },
-  
+
   /* 坐标转换函数开始 */
 
   // 转换为实际 x 坐标

@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>共享白板</title>
+        <title>协作式白板</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <WhiteBoard />

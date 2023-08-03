@@ -5,8 +5,12 @@ module.exports = {
     './components/**/*.{js,jsx}',
   ],
   safelist: [
+    'bg-[#ff0000]',
+    'bg-[#0000ff]',
+    'bg-[#ffff00]',
     {
-      pattern: /bg-(red|green|blue|yellow)-500/,
+      pattern: /bg-(red|blue|yellow)-500/,
+      variants: ['hover'],
     },
     {
       pattern: /cursor-(crosshair|move)/,
