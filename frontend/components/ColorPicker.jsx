@@ -23,8 +23,9 @@ function toRGB(color) {
 export default function () {
   const WB = useContext(WBContext);
   const [selectedColor, setSelectedColor] = useState('black');
-  const [opacity, setOpacity] = useState(100);
   const [showColors, setShowColors] = useState(false);
+  const [opacity, setOpacity] = useState(100);
+  const [showOpacity, setShowOpacity] = useState(false);
 
   const colorClass = (color) => {
     let c = 'inline-block w-10 h-10 rounded';
@@ -63,13 +64,20 @@ export default function () {
           )}
         </div>
         <div className="flex flex-row gap-1">
-          <Button Icon={Sun} />
-          <div className={`rounded h-10 p-2 bg-[${toRGB(selectedColor)}]`} style={{ opacity: opacity + '%' }}>
-            <input id="default-range" type="range" defaultValue={opacity} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
-              const { value } = e.target;
-              setOpacity(value > 15 ? value : 15);
-            }} />
-          </div>
+          <Button Icon={Sun} onClick={() => setShowOpacity(true)} />
+          {showOpacity && (
+            <>
+              <div className={`rounded h-10 p-2 bg-[${toRGB(selectedColor)}]`} style={{ opacity: opacity + '%' }}>
+                <input id="default-range" type="range" defaultValue={opacity} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
+                  const { value } = e.target;
+                  setOpacity(value > 15 ? value : 15);
+                }} />
+              </div>
+              <div className="bg-slate-700 hover:bg-slate-300 hover:cursor-pointer active:bg-slate-500 w-10 h-10 rounded p-2 text-white" onClick={() => setShowOpacity(false)}>
+                <Cancel />
+              </div>
+            </>
+          )}
         </div>
       </OpacityContext.Provider>
     </ColorContext.Provider>
