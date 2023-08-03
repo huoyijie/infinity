@@ -1,9 +1,10 @@
-import { useContext, useState } from "react";
+import { useContext, useState } from 'react';
 import Color from './assets/Color';
 import Button from './Button';
-import WBContext from "./WBContext";
-import ColorContext from "./ColorContext";
-import Cancel from "./assets/Cancel";
+import WBContext from './WBContext';
+import ColorContext from './ColorContext';
+import Cancel from './assets/Cancel';
+import Sun from './assets/Sun'
 
 function toRGB(color) {
   switch (color) {
@@ -55,6 +56,9 @@ export default function () {
             </div>
           </>
         )}
+      </div>
+      <div className="flex flex-row gap-1">
+        <Button Icon={Sun} />
       </div>
     </ColorContext.Provider>
   );
