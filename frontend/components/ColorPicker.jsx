@@ -68,11 +68,10 @@ export default function () {
           {showOpacity && (
             <>
               <div className={`rounded h-10 p-2 bg-[${toRGB(selectedColor)}]`} style={{ opacity: opacity + '%' }}>
-                <input id="default-range" type="range" defaultValue={opacity} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
+                <input id="default-range" type="range" defaultValue={100} min={15} max={100} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
                   const { value } = e.target;
-                  const opacity = value > 15 ? value : 15;
-                  setOpacity(opacity);
-                  WB.setOpacity(opacity);
+                  setOpacity(value);
+                  WB.setOpacity(value);
                 }} />
               </div>
               <div className="bg-slate-700 hover:bg-slate-300 hover:cursor-pointer active:bg-slate-500 w-10 h-10 rounded p-2 text-white" onClick={() => setShowOpacity(false)}>

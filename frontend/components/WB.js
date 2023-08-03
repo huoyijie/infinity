@@ -1,18 +1,5 @@
 import io from 'socket.io-client';
 
-// 回调限流: 至少间隔 delay 毫秒才会调用事件处理回调函数
-function throttle(callback, delay) {
-  let previousCall = new Date().getTime();
-  return function () {
-    const time = new Date().getTime();
-
-    if ((time - previousCall) >= delay) {
-      previousCall = time;
-      callback.apply(null, arguments);
-    }
-  };
-}
-
 const WB = {
   // socket.io 连接句柄
   socket: null,
@@ -71,15 +58,15 @@ const WB = {
     // 释放鼠标事件处理
     this.canvas.addEventListener('mouseup', onMouseUp, false);
     this.canvas.addEventListener('mouseout', onMouseUp, false);
-    this.canvas.addEventListener('wheel', throttle(onMouseWheel, 10), false);
+    this.canvas.addEventListener('wheel', onMouseWheel, false);
     // 移动鼠标事件处理
-    this.canvas.addEventListener('mousemove', throttle(onMouseMove, 10), false);
+    this.canvas.addEventListener('mousemove', onMouseMove, false);
 
     // 添加手机触屏事件处理
     this.canvas.addEventListener('touchstart', onTouchStart, false);
     this.canvas.addEventListener('touchend', onTouchEnd, false);
     this.canvas.addEventListener('touchcancel', onTouchEnd, false);
-    this.canvas.addEventListener('touchmove', throttle(onTouchMove, 10), false);
+    this.canvas.addEventListener('touchmove', onTouchMove, false);
 
     // 建立 socket.io 连接
     this.socket = io('ws://localhost:4000');
@@ -109,6 +96,11 @@ const WB = {
   // 设置画笔不透明度
   setOpacity(opacity) {
     this.pen.opacity = opacity;
+  },
+
+  // 设置画笔粗细
+  setSize(size) {
+    this.pen.size = size;
   },
 
   // 每当移动画板、放大缩小画板、resize 窗口大小都需要重新绘制画板
