@@ -28,6 +28,7 @@ const WB = {
   pen: {
     // 默认颜色
     color: 'black',
+    opacity: 100,
     // 默认线宽
     size: 2,
   },
@@ -105,6 +106,11 @@ const WB = {
     this.pen.color = color;
   },
 
+  // 设置画笔不透明度
+  setOpacity(opacity) {
+    this.pen.opacity = opacity;
+  },
+
   // 每当移动画板、放大缩小画板、resize 窗口大小都需要重新绘制画板
   redraw() {
     // 设置画板长和宽为窗口大小
@@ -133,6 +139,7 @@ const WB = {
     this.cxt.moveTo(x0, y0);
     this.cxt.lineTo(x1, y1);
     this.cxt.strokeStyle = pen.color;
+    this.cxt.globalAlpha = pen.opacity / 100;
     this.cxt.lineWidth = pen.size;
     this.cxt.stroke();
     this.cxt.closePath();
