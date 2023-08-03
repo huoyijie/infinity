@@ -9,7 +9,7 @@ module.exports = {
     'bg-[#0000ff]',
     'bg-[#ffff00]',
     {
-      pattern: /bg-(red|blue|yellow)-500/,
+      pattern: /bg-(red|blue|yellow)-300/,
       variants: ['hover'],
     },
     {

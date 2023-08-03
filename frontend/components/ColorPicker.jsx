@@ -25,7 +25,7 @@ export default function () {
     if (color === 'black') {
       c += ' bg-black hover:bg-slate-500';
     } else {
-      c += ` bg-[${toRGB(color)}] hover:bg-${color}-500`;
+      c += ` bg-[${toRGB(color)}] hover:bg-${color}-300`;
     }
     return c;
   };
