@@ -34,6 +34,7 @@ export default function () {
   const selectColor = (color) => {
     setSelectedColor(color);
     WB.setColor(color);
+    setShowColors(false);
   };
 
   return (
