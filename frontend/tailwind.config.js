@@ -5,6 +5,7 @@ module.exports = {
     './components/**/*.{js,jsx}',
   ],
   safelist: [
+    'bg-[#000000]',
     'bg-[#ff0000]',
     'bg-[#0000ff]',
     'bg-[#ffff00]',
