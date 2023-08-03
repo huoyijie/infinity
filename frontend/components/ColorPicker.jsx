@@ -3,6 +3,7 @@ import Color from './assets/Color';
 import Button from './Button';
 import WBContext from "./WBContext";
 import ColorContext from "./ColorContext";
+import Cancel from "./assets/Cancel";
 
 function toRGB(color) {
   switch (color) {
@@ -49,6 +50,9 @@ export default function () {
             <div className={colorClass('red')} onClick={() => selectColor('red')}></div>
             <div className={colorClass('blue')} onClick={() => selectColor('blue')}></div>
             <div className={colorClass('yellow')} onClick={() => selectColor('yellow')}></div>
+            <div className="bg-slate-700 hover:bg-slate-300 hover:cursor-pointer active:bg-slate-500 w-10 h-10 rounded p-2 text-white" onClick={() => setShowColors(false)}>
+              <Cancel />
+            </div>
           </>
         )}
       </div>

@@ -4,6 +4,7 @@ import Trash from './assets/Trash';
 import HandRaised from './assets/HandRaised';
 import Question from './assets/Question';
 import ColorPicker from "./ColorPicker";
+import Sun from './assets/Sun';
 
 export default function () {
   return (
@@ -14,6 +15,7 @@ export default function () {
         <Button Icon={Trash} />
         <Button Icon={HandRaised} />
         <ColorPicker />
+        <Button Icon={Sun} />
         <Button Icon={Question} />
       </div>
     </>
