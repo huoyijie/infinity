@@ -234,7 +234,7 @@ const onMouseUp = (e) => {
       WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
 
       const drawing = {
-        pen: WB.pen,
+        pen: { ...WB.pen },
         beginPoint: WB.toLogicPoint(WB.beginPoint),
         controlPoint: WB.toLogicPoint(controlPoint),
         endPoint: WB.toLogicPoint(endPoint),
@@ -272,7 +272,7 @@ const onMouseMove = (e) => {
       WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
 
       const drawing = {
-        pen: WB.pen,
+        pen: { ...WB.pen },
         beginPoint: WB.toLogicPoint(WB.beginPoint),
         controlPoint: WB.toLogicPoint(controlPoint),
         endPoint: WB.toLogicPoint(endPoint),
@@ -360,7 +360,7 @@ const onTouchMove = (e) => {
       WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
 
       const drawing = {
-        pen: WB.pen,
+        pen: { ...WB.pen },
         beginPoint: WB.toLogicPoint(WB.beginPoint),
         controlPoint: WB.toLogicPoint(controlPoint),
         endPoint: WB.toLogicPoint(endPoint),
