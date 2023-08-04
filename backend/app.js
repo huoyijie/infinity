@@ -19,10 +19,14 @@ const io = new Server(httpServer, {
 
 // 新客户端连接
 io.on('connection', (socket) => {
+  console.log(socket.id, 'connected');
   // 收到客户端新笔划请求
   socket.on('drawing', (drawing) => {
     // 广播给其他客户端
     socket.broadcast.emit('drawing', drawing);
+  });
+  socket.on('disconnect', () => {
+    console.log(socket.id, 'disconnect');
   });
 });
 

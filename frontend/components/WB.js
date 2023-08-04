@@ -78,10 +78,7 @@ const WB = {
     this.socket.on('drawing', (drawing) => {
       that.onRecvDrawing(drawing);
     })
-    // 关闭浏览器 tab 页面，确保关闭 socket 连接
-    window.onbeforeunload = () => {
-      that.socket.disconnect();
-    };
+
     // window resize, redraw
     window.addEventListener('resize', () => {
       that.redraw();
@@ -202,6 +199,11 @@ const WB = {
       this.toPoint(drawing.controlPoint),
       this.toPoint(drawing.endPoint),
     );
+  },
+
+  // 清理资源
+  close() {
+    this.socket.disconnect();
   }
 };
 

@@ -8,7 +8,10 @@ function WhiteBoard() {
   const [cursor, setCursor] = useState(null);
 
   // 启动 socket 连接，初始化共享画板组件
-  useEffect(() => WB.init(canvasRef, setCursor), []);
+  useEffect(() => {
+    WB.init(canvasRef, setCursor);
+    return () => WB.close();
+  }, []);
 
   const canvasClass = () => {
     let c = 'w-full h-full';
