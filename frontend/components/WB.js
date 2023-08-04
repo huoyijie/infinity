@@ -16,7 +16,7 @@ const WB = {
     // 默认颜色
     color: 'black',
     opacity: 100,
-    // 默认线宽
+    // 默认画笔粗细(逻辑)
     size: 2,
   },
 
@@ -121,7 +121,7 @@ const WB = {
     // 绘制所有笔划，存储在 drawings 中
     for (let drawing of this.drawings) {
       this.drawLine(
-        drawing.pen,
+        this.toPen(drawing.pen),
         this.toPoint(drawing.beginPoint),
         this.toPoint(drawing.controlPoint),
         this.toPoint(drawing.endPoint),
@@ -157,6 +157,16 @@ const WB = {
     return { x: this.toX(x), y: this.toY(y) };
   },
 
+  // 转为实际画笔
+  toPen(lPen) {
+    const { color, opacity, size } = lPen || this.pen;
+    return {
+      color,
+      opacity,
+      size: size * this.scale,
+    };
+  },
+
   // 转换为逻辑坐标
   toLogicX(x) {
     return (x / this.scale) - this.offsetX;
@@ -187,7 +197,7 @@ const WB = {
     this.drawings.push(drawing);
     // 绘制笔划
     this.drawLine(
-      drawing.pen,
+      this.toPen(drawing.pen),
       this.toPoint(drawing.beginPoint),
       this.toPoint(drawing.controlPoint),
       this.toPoint(drawing.endPoint),
@@ -219,10 +229,10 @@ const onMouseUp = (e) => {
       const lastTwoPoints = WB.points.slice(-2);
       const controlPoint = lastTwoPoints[0];
       const endPoint = lastTwoPoints[1];
-      WB.drawLine(WB.pen, WB.beginPoint, controlPoint, endPoint);
+      WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
 
       const drawing = {
-        pen: { ...WB.pen },
+        pen: WB.pen,
         beginPoint: WB.toLogicPoint(WB.beginPoint),
         controlPoint: WB.toLogicPoint(controlPoint),
         endPoint: WB.toLogicPoint(endPoint),
@@ -257,10 +267,10 @@ const onMouseMove = (e) => {
         x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
         y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
       }
-      WB.drawLine(WB.pen, WB.beginPoint, controlPoint, endPoint);
+      WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
 
       const drawing = {
-        pen: { ...WB.pen },
+        pen: WB.pen,
         beginPoint: WB.toLogicPoint(WB.beginPoint),
         controlPoint: WB.toLogicPoint(controlPoint),
         endPoint: WB.toLogicPoint(endPoint),
@@ -345,10 +355,10 @@ const onTouchMove = (e) => {
         x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
         y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
       }
-      WB.drawLine(WB.pen, WB.beginPoint, controlPoint, endPoint);
+      WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
 
       const drawing = {
-        pen: { ...WB.pen },
+        pen: WB.pen,
         beginPoint: WB.toLogicPoint(WB.beginPoint),
         controlPoint: WB.toLogicPoint(controlPoint),
         endPoint: WB.toLogicPoint(endPoint),
