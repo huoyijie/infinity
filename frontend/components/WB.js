@@ -1,4 +1,5 @@
 import io from 'socket.io-client';
+import { LazyBrush } from 'lazy-brush';
 
 const WB = {
   // socket.io 连接句柄
@@ -7,6 +8,8 @@ const WB = {
   // 画板和上下文
   canvas: null,
   ctx: null,
+  lbCanvas: null,
+  lbCtx: null,
 
   // 根据不同状态设置鼠标样式，如正在涂鸦或者移动画板
   setCursor: null,
@@ -17,7 +20,7 @@ const WB = {
     color: 'black',
     opacity: 100,
     // 默认画笔粗细(逻辑)
-    size: 2,
+    size: 10,
   },
 
   // 所有绘画数据
@@ -48,30 +51,41 @@ const WB = {
   points: [],
   // 起始点
   beginPoint: null,
+  // Lazy Brush
+  lazyBrush: new LazyBrush({
+    enabled: true,
+    radius: 10,
+    initialPoint: { x: 0, y: 0 }
+  }),
 
   // 初始化画板
-  init(canvasRef, setCursor) {
+  init(canvasRef, lbCanvasRef, setCursor) {
     const that = this;
     // 获取画板元素及上下文对象
     this.canvas = canvasRef.current;
     this.ctx = this.canvas.getContext('2d');
+    this.lbCanvas = lbCanvasRef.current;
+    this.lbCtx = this.lbCanvas.getContext('2d');
     // 当画板上进入不同状态时可通过此函数变换鼠标样式
     this.setCursor = setCursor;
 
     // 添加鼠标事件处理
-    this.canvas.addEventListener('mousedown', onMouseDown, false);
+    this.lbCanvas.addEventListener('mousedown', onMouseDown, false);
     // 释放鼠标事件处理
-    this.canvas.addEventListener('mouseup', onMouseUp, false);
-    this.canvas.addEventListener('mouseout', onMouseUp, false);
-    this.canvas.addEventListener('wheel', onMouseWheel, false);
+    this.lbCanvas.addEventListener('mouseup', onMouseUp, false);
+    this.lbCanvas.addEventListener('mouseout', onMouseUp, false);
+    this.lbCanvas.addEventListener('mouseout', () => {
+      that.drawBrush(true);
+    }, false);
+    this.lbCanvas.addEventListener('wheel', onMouseWheel, false);
     // 移动鼠标事件处理
-    this.canvas.addEventListener('mousemove', onMouseMove, false);
+    this.lbCanvas.addEventListener('mousemove', onMouseMove, false);
 
     // 添加手机触屏事件处理
-    this.canvas.addEventListener('touchstart', onTouchStart, false);
-    this.canvas.addEventListener('touchend', onTouchEnd, false);
-    this.canvas.addEventListener('touchcancel', onTouchEnd, false);
-    this.canvas.addEventListener('touchmove', onTouchMove, false);
+    this.lbCanvas.addEventListener('touchstart', onTouchStart, false);
+    this.lbCanvas.addEventListener('touchend', onTouchEnd, false);
+    this.lbCanvas.addEventListener('touchcancel', onTouchEnd, false);
+    this.lbCanvas.addEventListener('touchmove', onTouchMove, false);
 
     // 建立 socket.io 连接
     this.socket = io('ws://localhost:4000');
@@ -93,6 +107,7 @@ const WB = {
   // 设置画笔颜色
   setColor(color) {
     this.pen.color = color;
+    this.drawBrush();
   },
 
   // 设置画笔不透明度
@@ -103,10 +118,14 @@ const WB = {
   // 设置画笔粗细
   setSize(size) {
     this.pen.size = size;
+    this.drawBrush();
   },
 
   // 每当移动画板、放大缩小画板、resize 窗口大小都需要重新绘制画板
   redraw() {
+    this.lbCanvas.width = document.body.clientWidth;
+    this.lbCanvas.height = document.body.clientHeight;
+
     // 设置画板长和宽为窗口大小
     this.canvas.width = document.body.clientWidth;
     this.canvas.height = document.body.clientHeight;
@@ -126,6 +145,21 @@ const WB = {
     }
   },
 
+  // 画 Brush
+  drawBrush(clear) {
+    this.lbCtx.clearRect(0, 0, this.lbCanvas.width, this.lbCanvas.height);
+    if (clear) return;
+
+    const { x, y } = WB.lazyBrush.getBrushCoordinates();
+    this.lbCtx.beginPath();
+    this.lbCtx.strokeStyle = this.pen.color;
+    this.lbCtx.fillStyle = this.pen.color;
+    this.lbCtx.arc(x, y, Math.max(this.toPenSize() / 2, 2), 0, Math.PI * 2);
+    this.lbCtx.fill();
+    this.lbCtx.stroke();
+    this.lbCtx.closePath();
+  },
+
   // 画线段
   drawLine(pen, beginPoint, controlPoint, endPoint) {
     this.ctx.beginPath();
@@ -133,6 +167,7 @@ const WB = {
     this.ctx.strokeStyle = pen.color;
     this.ctx.lineWidth = pen.size;
     this.ctx.lineJoin = 'round';
+    this.ctx.lineCap = 'round';
     this.ctx.moveTo(beginPoint.x, beginPoint.y);
     this.ctx.quadraticCurveTo(controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
     this.ctx.stroke();
@@ -154,13 +189,17 @@ const WB = {
     return { x: this.toX(x), y: this.toY(y) };
   },
 
+  toPenSize(size) {
+    return (size || this.pen.size) * this.scale;
+  },
+
   // 转为实际画笔
   toPen(lPen) {
     const { color, opacity, size } = lPen || this.pen;
     return {
       color,
       opacity,
-      size: size * this.scale,
+      size: this.toPenSize(size),
     };
   },
 
@@ -213,7 +252,7 @@ const onMouseDown = (e) => {
   WB.leftMouseDown = e.button == 0;
   WB.rightMouseDown = e.button == 2;
   if (WB.leftMouseDown) {
-    WB.beginPoint = { x: e.pageX, y: e.pageY };
+    WB.beginPoint = WB.lazyBrush.getBrushCoordinates();
     WB.points.push(WB.beginPoint);
     WB.setCursor('crosshair');
   } else if (WB.rightMouseDown) {
@@ -226,24 +265,6 @@ const onMouseDown = (e) => {
 
 const onMouseUp = (e) => {
   if (WB.leftMouseDown) {
-    WB.points.push({ x: e.pageX, y: e.pageY });
-    if (WB.points.length >= 3) {
-      const lastTwoPoints = WB.points.slice(-2);
-      const controlPoint = lastTwoPoints[0];
-      const endPoint = lastTwoPoints[1];
-      WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
-
-      const drawing = {
-        pen: { ...WB.pen },
-        beginPoint: WB.toLogicPoint(WB.beginPoint),
-        controlPoint: WB.toLogicPoint(controlPoint),
-        endPoint: WB.toLogicPoint(endPoint),
-      };
-      // 保存笔划
-      WB.drawings.push(drawing);
-      // 把当前笔划发送到服务器
-      WB.socket.emit('drawing', drawing);
-    }
     WB.leftMouseDown = false;
     WB.beginPoint = null;
     WB.points = [];
@@ -259,8 +280,8 @@ const onMouseMove = (e) => {
   const cursorY = e.pageY;
 
   // 按住左键移动鼠标进行涂鸦
-  if (WB.leftMouseDown) {
-    WB.points.push({ x: e.pageX, y: e.pageY });
+  if (WB.lazyBrush.update({ x: e.pageX, y: e.pageY }) && WB.leftMouseDown) {
+    WB.points.push(WB.lazyBrush.getBrushCoordinates());
     if (WB.points.length >= 3) {
       // 绘制笔划
       const lastTwoPoints = WB.points.slice(-2);
@@ -286,6 +307,9 @@ const onMouseMove = (e) => {
       WB.beginPoint = endPoint;
     }
   }
+
+  // 画 brush
+  WB.drawBrush();
 
   // 按住右键移动鼠标进行画板移动
   if (WB.rightMouseDown) {
@@ -320,11 +344,11 @@ const onMouseWheel = (e) => {
   WB.offsetY -= unitsAddTop;
 
   WB.redraw();
+  WB.drawBrush();
 };
 /* 鼠标事件处理结束 */
 
 /* 触屏事件处理开始 */
-
 const onTouchStart = (e) => {
   // 检测到一个触屏点为单手指
   WB.singleTouch = e.touches.length == 1;
@@ -334,7 +358,8 @@ const onTouchStart = (e) => {
   WB.prevTouches[0] = e.touches[0];
   WB.prevTouches[1] = e.touches[1];
   if (WB.singleTouch) {
-    WB.beginPoint = { x: e.touches[0].pageX, y: e.touches[0].pageY };
+    WB.lazyBrush.update({ x: e.touches[0].pageX, y: e.touches[0].pageY });
+    WB.beginPoint = WB.lazyBrush.getBrushCoordinates();
     WB.points.push(WB.beginPoint);
   }
 };
@@ -347,8 +372,8 @@ const onTouchMove = (e) => {
   const prevTouch0Y = WB.prevTouches[0].pageY;
 
   // 一根手指绘制笔划
-  if (WB.singleTouch) {
-    WB.points.push({ x: e.touches[0].pageX, y: e.touches[0].pageY });
+  if (WB.lazyBrush.update({ x: touch0X, y: touch0Y }) && WB.singleTouch) {
+    WB.points.push(WB.lazyBrush.getBrushCoordinates());
     if (WB.points.length >= 3) {
       // 绘制笔划
       const lastTwoPoints = WB.points.slice(-2);
@@ -373,6 +398,7 @@ const onTouchMove = (e) => {
       // 更新起始点
       WB.beginPoint = endPoint;
     }
+    WB.drawBrush();
   }
 
   // 两根以上手指移动或伸缩画板

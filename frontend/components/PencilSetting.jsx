@@ -8,7 +8,7 @@ import SettingContext from './SettingContext';
 export default function ({ showPencilSetting }) {
   const WB = useContext(WBContext);
   const { setShowPencilSetting, resetAll } = useContext(SettingContext);
-  const [pencilSize, setPencilSize] = useState(2);
+  const [pencilSize, setPencilSize] = useState(10);
 
   return (
     <div className="flex flex-row gap-1">
@@ -21,8 +21,8 @@ export default function ({ showPencilSetting }) {
           <div className="rounded h-10 p-2">
             <input id="default-range" type="range" defaultValue={pencilSize} min={1} max={20} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
               const { value } = e.target;
-              WB.setSize(value);
               setPencilSize(value);
+              WB.setSize(value);
             }} />
           </div>
           <div className="text-center p-2">{pencilSize}</div>

@@ -40,8 +40,8 @@ export default function ({ showColors, showOpacity }) {
   // 点击颜色组件选色处理函数
   const selectColor = (color) => {
     setSelectedColor(color);
-    WB.setColor(color);
     setShowColors(false);
+    WB.setColor(color);
   };
 
   return (
