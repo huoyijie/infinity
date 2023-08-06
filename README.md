@@ -66,3 +66,11 @@ useEffect(() => {
 ```
 
 ## 环境变量
+
+### backend
+
+* PORT
+
+### frontend
+
+* NEXT_PUBLIC_SOCKETIO_URL=ws://192.168.31.53:5000
