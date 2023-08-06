@@ -30,4 +30,4 @@ io.on('connection', (socket) => {
 });
 
 // 启动服务器
-httpServer.listen(process.env.PORT);
+httpServer.listen(process.env.PORT || 4000);
