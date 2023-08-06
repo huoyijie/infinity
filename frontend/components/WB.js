@@ -1,5 +1,8 @@
 import io from 'socket.io-client';
 import { LazyBrush } from 'lazy-brush';
+import { v4 as uuidv4 } from 'uuid';
+
+const newStrokeId = () => uuidv4().replaceAll('-', '');
 
 const WB = {
   // socket.io 连接句柄
@@ -8,6 +11,8 @@ const WB = {
   // 画板和上下文
   canvas: null,
   ctx: null,
+  draftCanvas: null,
+  draftCtx: null,
   lbCanvas: null,
   lbCtx: null,
 
@@ -24,7 +29,7 @@ const WB = {
   },
 
   // 所有绘画数据
-  drawings: [],
+  drawings: new Map(),
 
   // 画板移动偏移量
   offsetX: 0,
@@ -48,6 +53,7 @@ const WB = {
   doubleTouch: false,
 
   // 线段的离线点集合
+  currentStroke: null,
   points: [],
   // 起始点
   beginPoint: null,
@@ -59,13 +65,16 @@ const WB = {
   }),
 
   // 初始化画板
-  init(canvasRef, lbCanvasRef, setCursor) {
+  init(canvasRef, draftCanvasRef, lbCanvasRef, setCursor) {
     const that = this;
     // 获取画板元素及上下文对象
     this.canvas = canvasRef.current;
     this.ctx = this.canvas.getContext('2d');
+    this.draftCanvas = draftCanvasRef.current;
+    this.draftCtx = this.draftCanvas.getContext('2d');
     this.lbCanvas = lbCanvasRef.current;
     this.lbCtx = this.lbCanvas.getContext('2d');
+
     // 当画板上进入不同状态时可通过此函数变换鼠标样式
     this.setCursor = setCursor;
 
@@ -104,6 +113,11 @@ const WB = {
     this.redraw();
   },
 
+  // 清理资源
+  close() {
+    this.socket.disconnect();
+  },
+
   // 设置画笔颜色
   setColor(color) {
     this.pen.color = color;
@@ -121,31 +135,7 @@ const WB = {
     this.drawBrush();
   },
 
-  // 每当移动画板、放大缩小画板、resize 窗口大小都需要重新绘制画板
-  redraw() {
-    this.lbCanvas.width = document.body.clientWidth;
-    this.lbCanvas.height = document.body.clientHeight;
-
-    // 设置画板长和宽为窗口大小
-    this.canvas.width = document.body.clientWidth;
-    this.canvas.height = document.body.clientHeight;
-
-    // 设置白色背景
-    this.ctx.fillStyle = '#fff';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // 绘制所有笔划，存储在 drawings 中
-    for (let drawing of this.drawings) {
-      this.drawLine(
-        this.toPen(drawing.pen),
-        this.toPoint(drawing.beginPoint),
-        this.toPoint(drawing.controlPoint),
-        this.toPoint(drawing.endPoint),
-      );
-    }
-  },
-
-  // 画 Brush
+  // 在最上面图层画 Brush
   drawBrush(clear) {
     this.lbCtx.clearRect(0, 0, this.lbCanvas.width, this.lbCanvas.height);
     if (clear) return;
@@ -160,22 +150,80 @@ const WB = {
     this.lbCtx.closePath();
   },
 
-  // 画线段
+  // 在中间 draft 图层画线段
   drawLine(pen, beginPoint, controlPoint, endPoint) {
-    this.ctx.beginPath();
-    this.ctx.globalAlpha = pen.opacity / 100;
-    this.ctx.strokeStyle = pen.color;
-    this.ctx.lineWidth = pen.size;
-    this.ctx.lineJoin = 'round';
-    this.ctx.lineCap = 'round';
-    this.ctx.moveTo(beginPoint.x, beginPoint.y);
-    this.ctx.quadraticCurveTo(controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
-    this.ctx.stroke();
-    this.ctx.closePath();
+    this.draftCtx.beginPath();
+    this.draftCtx.strokeStyle = pen.color;
+    this.draftCtx.lineWidth = pen.size;
+    this.draftCtx.lineJoin = 'round';
+    this.draftCtx.lineCap = 'round';
+    this.draftCtx.moveTo(beginPoint.x, beginPoint.y);
+    this.draftCtx.quadraticCurveTo(controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
+    this.draftCtx.stroke();
+    this.draftCtx.closePath();
+  },
+
+  // 从中间 draft 图层拷贝到最下方画板图层
+  copyFromDraft(pen) {
+    this.ctx.globalAlpha = (pen || this.pen).opacity / 100;
+    this.ctx.drawImage(this.draftCanvas, 0, 0);
+    this.draftCtx.clearRect(0, 0, this.draftCanvas.width, this.draftCanvas.height);
+  },
+
+  // 当从服务器接收到涂鸦数据，需要在画板上实时绘制
+  onRecvDrawing(drawing) {
+    if (!drawing.end) {
+      // 保存绘画数据
+      const stroke = this.drawings.get(drawing.strokeId) || [];
+      stroke.push(drawing);
+      this.drawings.set(drawing.strokeId, stroke);
+    } else {
+      const stroke = this.drawings.get(drawing.strokeId);
+      if (stroke) {
+        for (const drawing of stroke) {
+          // 在 draft 图层上绘制笔划
+          this.drawLine(
+            this.toPen(drawing.pen),
+            this.toPoint(drawing.beginPoint),
+            this.toPoint(drawing.controlPoint),
+            this.toPoint(drawing.endPoint),
+          );
+        }
+        // 当前笔划结束后，拷贝 draft 图层到最下方画板图层
+        this.copyFromDraft(drawing.pen);
+      }
+    }
+  },
+
+  // 每当移动画板、放大缩小画板、resize 窗口大小都需要重新绘制画板
+  redraw() {
+    // 设置画板长和宽为窗口大小
+    this.canvas.width = document.body.clientWidth;
+    this.canvas.height = document.body.clientHeight;
+    this.draftCanvas.width = document.body.clientWidth;
+    this.draftCanvas.height = document.body.clientHeight;
+    this.lbCanvas.width = document.body.clientWidth;
+    this.lbCanvas.height = document.body.clientHeight;
+
+    // 清空画板图层
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // 所有笔划存储在 drawings 中
+    for (const [_, stroke] of this.drawings) {
+      // 在 draft 图层上绘制笔划
+      for (const drawing of stroke) {
+        this.drawLine(
+          this.toPen(drawing.pen),
+          this.toPoint(drawing.beginPoint),
+          this.toPoint(drawing.controlPoint),
+          this.toPoint(drawing.endPoint),
+        );
+      }
+      // 拷贝到最下方画板图层
+      this.copyFromDraft(stroke[0].pen);
+    }
   },
 
   /* 坐标转换函数开始 */
-
   // 转换为实际 x 坐标
   toX(xL) {
     return (xL + this.offsetX) * this.scale;
@@ -226,24 +274,6 @@ const WB = {
     return this.canvas.width / this.scale;
   },
   /* 坐标转换函数结束 */
-
-  // 当从服务器接收到涂鸦数据，需要在画板上实时绘制
-  onRecvDrawing(drawing) {
-    // 保存绘画数据
-    this.drawings.push(drawing);
-    // 绘制笔划
-    this.drawLine(
-      this.toPen(drawing.pen),
-      this.toPoint(drawing.beginPoint),
-      this.toPoint(drawing.controlPoint),
-      this.toPoint(drawing.endPoint),
-    );
-  },
-
-  // 清理资源
-  close() {
-    this.socket.disconnect();
-  }
 };
 
 /* 鼠标事件处理开始 */
@@ -254,6 +284,7 @@ const onMouseDown = (e) => {
   if (WB.leftMouseDown) {
     WB.beginPoint = WB.lazyBrush.getBrushCoordinates();
     WB.points.push(WB.beginPoint);
+    WB.currentStroke = newStrokeId();
     WB.setCursor('crosshair');
   } else if (WB.rightMouseDown) {
     WB.setCursor('move');
@@ -261,17 +292,6 @@ const onMouseDown = (e) => {
   // 更新鼠标移动前坐标
   WB.prevCursorX = e.pageX;
   WB.prevCursorY = e.pageY;
-};
-
-const onMouseUp = (e) => {
-  if (WB.leftMouseDown) {
-    WB.leftMouseDown = false;
-    WB.beginPoint = null;
-    WB.points = [];
-  }
-  WB.rightMouseDown = false;
-  // 恢复默认鼠标样式
-  WB.setCursor(null);
 };
 
 const onMouseMove = (e) => {
@@ -293,13 +313,16 @@ const onMouseMove = (e) => {
       WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
 
       const drawing = {
+        strokeId: WB.currentStroke,
         pen: { ...WB.pen },
         beginPoint: WB.toLogicPoint(WB.beginPoint),
         controlPoint: WB.toLogicPoint(controlPoint),
         endPoint: WB.toLogicPoint(endPoint),
       };
       // 保存笔划
-      WB.drawings.push(drawing);
+      const stroke = WB.drawings.get(drawing.strokeId) || [];
+      stroke.push(drawing);
+      WB.drawings.set(drawing.strokeId, stroke);
       // 把当前笔划发送到服务器
       WB.socket.emit('drawing', drawing);
 
@@ -322,6 +345,25 @@ const onMouseMove = (e) => {
   // 更新移动前鼠标坐标为最新值
   WB.prevCursorX = cursorX;
   WB.prevCursorY = cursorY;
+};
+
+const onMouseUp = (e) => {
+  if (WB.leftMouseDown) {
+    // 发送笔划结束，不包含画笔和数据
+    WB.socket.emit('drawing', {
+      strokeId: WB.currentStroke,
+      end: true,
+      pen: { ...WB.pen },
+    });
+    WB.copyFromDraft();
+    WB.leftMouseDown = false;
+    WB.currentStroke = null;
+    WB.beginPoint = null;
+    WB.points = [];
+  }
+  WB.rightMouseDown = false;
+  // 恢复默认鼠标样式
+  WB.setCursor(null);
 };
 
 const onMouseWheel = (e) => {
@@ -359,6 +401,7 @@ const onTouchStart = (e) => {
   WB.prevTouches[1] = e.touches[1];
   if (WB.singleTouch) {
     WB.lazyBrush.update({ x: e.touches[0].pageX, y: e.touches[0].pageY });
+    WB.currentStroke = newStrokeId();
     WB.beginPoint = WB.lazyBrush.getBrushCoordinates();
     WB.points.push(WB.beginPoint);
   }
@@ -385,13 +428,17 @@ const onTouchMove = (e) => {
       WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
 
       const drawing = {
+        strokeId: WB.currentStroke,
         pen: { ...WB.pen },
         beginPoint: WB.toLogicPoint(WB.beginPoint),
         controlPoint: WB.toLogicPoint(controlPoint),
         endPoint: WB.toLogicPoint(endPoint),
       };
+
       // 保存笔划
-      WB.drawings.push(drawing);
+      const stroke = WB.drawings.get(drawing.strokeId) || [];
+      stroke.push(drawing);
+      WB.drawings.set(drawing.strokeId, stroke);
       // 把当前笔划发送到服务器
       WB.socket.emit('drawing', drawing);
 
@@ -448,6 +495,7 @@ const onTouchMove = (e) => {
     WB.offsetY += unitsAddTop;
 
     WB.redraw();
+    WB.drawBrush(true);
   }
 
   // 更新触点坐标
@@ -457,7 +505,15 @@ const onTouchMove = (e) => {
 
 const onTouchEnd = (e) => {
   if (WB.singleTouch) {
+    // 发送笔划结束，不包含画笔和数据
+    WB.socket.emit('drawing', {
+      strokeId: WB.currentStroke,
+      end: true,
+      pen: { ...WB.pen },
+    });
+    WB.copyFromDraft();
     WB.singleTouch = false;
+    WB.currentStroke = null;
     WB.beginPoint = null;
     WB.points = [];
   }

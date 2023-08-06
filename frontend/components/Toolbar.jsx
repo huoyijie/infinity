@@ -21,7 +21,7 @@ export default function () {
   return (
     <>
       {/* 画笔颜色选择 */}
-      <div className="fixed z-30 top-8 left-5 flex flex-col gap-y-2">
+      <div className="fixed z-40 top-8 left-5 flex flex-col gap-y-2">
         <SettingContext.Provider value={{ setShowColors, setShowOpacity, setShowPencilSetting, resetAll }}>
           <Button Icon={PencilSquare} />
           <Button Icon={Trash} />

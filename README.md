@@ -5,28 +5,6 @@
 * 二次贝塞尔曲线 (quadraticCurveTo)
 * 鼠标移动过程中进行坐标点采样，如果设置不透明度，坐标点过于密集会影响效果
 
-## 地址栏显示坐标及 scale，三维空间
-
-* hash, x,y,scale
-
-## 重构代码
-
-* refactor WB.js
-
-## Bugfix
-
-* 刷新页面后，通过网络查看到 2 个 websocket 连接 done
-
-```js
-useEffect(() => {
-  WB.init(canvasRef, setCursor);
-  // 需返回清理回调，及时关闭 websocket 连接
-  return () => WB.close();
-}, []);
-```
-
-* hotreload 没有执行 WB.close todo
-
 ## Lazy-brush
 
 [Demo](https://lazybrush.dulnan.net/)
@@ -48,3 +26,43 @@ I have implemented exactly this in the form of a small library. It should be eas
 When drawing on the context, you can still use the usual techniques to make movement smoother, like interpolating points. All this together provides a really good way to draw with a mouse or finger.
 
 Checkout the code in the GitHub repository to see how exactly the calculations work. The demo/example repository can be found here: https://github.com/dulnan/lazy-brush-demo
+
+## Drawing on canvas with opacity (dots in line)
+
+[Question](https://stackoverflow.com/questions/29072686/drawing-on-canvas-with-opacity-dots-in-line-javascript)
+
+Yes, that is to be expected as each line is overdrawn at the connection points, and their alpha data will add up.
+
+I would suggest the following approach and attach a proof-of-concept demo at the end, feel free to adopt that code to your project:
+
+1. Create two canvases, one main and one draft on top
+2. Set the alpha directly on the top element using CSS (opacity) and always keep globalAlpha=1
+3. For each stroke (pen down, pen up) draw on draft canvas (use lines between each point)
+4. On pen up, set globalAlpha on main canvas equal the CSS opacity of top canvas
+5. Draw top canvas to main canvas using drawImage().
+6. Clear top canvas, eat, sleep, repeat (from 3).
+
+## 地址栏显示坐标及 scale，三维空间
+
+* hash, x,y,scale
+
+## 实时显示远程 peer 坐标和颜色等，实时显示远程 peer 笔划过程，现在粒度比较粗，一个笔划是同时显示出来，没有过程。
+
+## 重构代码
+
+* refactor WB.js
+
+## Bugfix
+
+* 刷新页面后，通过网络查看到 2 个 websocket 连接 done
+
+```js
+useEffect(() => {
+  WB.init(canvasRef, setCursor);
+  // 需返回清理回调，及时关闭 websocket 连接
+  return () => WB.close();
+}, []);
+```
+
+* resize 后颜色不对
+* 接收远程 drawing 显示逻辑不对
