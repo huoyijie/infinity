@@ -1,19 +1,18 @@
-import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
-const app = express();
-// 定义静态资源路径
-app.use(express.static('public'));
+// 加载 .env 环境变量
+import { config } from 'dotenv';
+config();
 
 // 创建 http server
-const httpServer = createServer(app);
+const httpServer = createServer();
 
 // 创建 socket.io server
 const io = new Server(httpServer, {
   serveClient: false,
   cors: {
-    origin: "http://localhost:3000"
+    origin: '*'
   }
 });
 
@@ -30,6 +29,5 @@ io.on('connection', (socket) => {
   });
 });
 
-// 启动服务器，监听 4000 端口
-httpServer.listen(4000);
-console.log('click http://localhost:4000');
+// 启动服务器
+httpServer.listen(process.env.PORT);
