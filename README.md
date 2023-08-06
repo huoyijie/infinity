@@ -45,6 +45,7 @@ I would suggest the following approach and attach a proof-of-concept demo at the
 ## 地址栏显示坐标及 scale，三维空间
 
 * hash, x,y,scale
+* scale 上下限制
 
 ## 实时显示远程 peer 坐标和颜色等，实时显示远程 peer 笔划过程，现在粒度比较粗，一个笔划是同时显示出来，没有过程。
 
@@ -63,6 +64,3 @@ useEffect(() => {
   return () => WB.close();
 }, []);
 ```
-
-* resize 后颜色不对
-* 接收远程 drawing 显示逻辑不对
