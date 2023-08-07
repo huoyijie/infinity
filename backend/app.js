@@ -1,5 +1,6 @@
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import msgpackParser from 'socket.io-msgpack-parser';
 
 // 加载 .env 环境变量
 import { config } from 'dotenv';
@@ -10,6 +11,7 @@ const httpServer = createServer();
 
 // 创建 socket.io server
 const io = new Server(httpServer, {
+  parser: msgpackParser,
   serveClient: false,
   cors: {
     origin: '*'

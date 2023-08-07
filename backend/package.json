@@ -6,7 +6,8 @@
   },
   "dependencies": {
     "dotenv": "^16.3.1",
-    "socket.io": "^4.7.1"
+    "socket.io": "^4.7.1",
+    "socket.io-msgpack-parser": "^3.0.2"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.7",

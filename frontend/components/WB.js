@@ -1,4 +1,5 @@
 import io from 'socket.io-client';
+import msgpackParser from 'socket.io-msgpack-parser';
 import { LazyBrush } from 'lazy-brush';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -97,7 +98,9 @@ const WB = {
     this.lbCanvas.addEventListener('touchmove', onTouchMove, false);
 
     // 建立 socket.io 连接
-    this.socket = io(process.env.NEXT_PUBLIC_SOCKETIO_URL || 'ws://localhost:4000');
+    this.socket = io(process.env.NEXT_PUBLIC_SOCKETIO_URL || 'ws://localhost:4000', {
+      parser: msgpackParser,
+    });
     this.socket.on('drawing', (drawing) => {
       that.onRecvDrawing(drawing);
     })

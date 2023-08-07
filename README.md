@@ -52,6 +52,7 @@ I would suggest the following approach and attach a proof-of-concept demo at the
 ## 重构代码
 
 * refactor WB.js
+* socket.io msgpack
 
 ## Bugfix
 
