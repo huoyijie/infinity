@@ -78,6 +78,7 @@ const WB = {
 
     // 当画板上进入不同状态时可通过此函数变换鼠标样式
     this.setCursor = setCursor;
+    this.parseHash();
 
     // 添加鼠标事件处理
     this.lbCanvas.addEventListener('mousedown', onMouseDown, false);
@@ -136,6 +137,35 @@ const WB = {
   setSize(size) {
     this.pen.size = size;
     this.drawBrush();
+  },
+
+  checkScale(scale) {
+    const s = scale || this.scale;
+    return s >= 0.1 && s <= 10;
+  },
+
+  hash() {
+    return `#${this.offsetX.toFixed(0)},${this.offsetY.toFixed(0)},${this.scale.toFixed(1)}`;
+  },
+
+  parseHash() {
+    const hash = location.hash.split('#')[1];
+    if (hash) {
+      const [offsetX, offsetY, scale] = hash.split(',');
+      this.offsetX = (offsetX && Number(offsetX)) || 0;
+      this.offsetY = (offsetY && Number(offsetY)) || 0;
+      this.scale = (scale && Number(scale)) || 1;
+      if (!this.checkScale()) {
+        this.offsetX = 0;
+        this.offsetY = 0;
+        this.scale = 1;
+      }
+      this.updateHash();
+    }
+  },
+
+  updateHash() {
+    location.hash = this.hash();
   },
 
   // 在最上面图层画 Brush
@@ -363,8 +393,10 @@ const onMouseUp = (e) => {
     WB.currentStroke = null;
     WB.beginPoint = null;
     WB.points = [];
+  } else {
+    WB.updateHash();
+    WB.rightMouseDown = false;
   }
-  WB.rightMouseDown = false;
   // 恢复默认鼠标样式
   WB.setCursor(null);
 };
@@ -372,6 +404,9 @@ const onMouseUp = (e) => {
 const onMouseWheel = (e) => {
   const deltaY = e.deltaY;
   const scaleAmount = -deltaY / 500;
+
+  if (!WB.checkScale(WB.scale * (1 + scaleAmount))) return;
+
   WB.scale *= (1 + scaleAmount);
 
   // 基于鼠标箭头位置决定怎样伸缩
@@ -390,6 +425,7 @@ const onMouseWheel = (e) => {
 
   WB.redraw();
   WB.drawBrush();
+  WB.updateHash();
 };
 /* 鼠标事件处理结束 */
 
@@ -471,34 +507,36 @@ const onTouchMove = (e) => {
 
     // calculate the screen scale change
     const zoomAmount = hypot / prevHypot;
-    WB.scale *= zoomAmount;
-    const scaleAmount = 1 - zoomAmount;
-
-    // calculate how many pixels the midpoints have moved in the x and y direction
-    const panX = midX - prevMidX;
-    const panY = midY - prevMidY;
-    // scale WB movement based on the zoom level
-    WB.offsetX += (panX / WB.scale);
-    WB.offsetY += (panY / WB.scale);
-
-    // Get the relative position of the middle of the zoom.
-    // 0, 0 would be top left. 
-    // 0, 1 would be top right etc.
-    const zoomRatioX = midX / WB.canvas.width;
-    const zoomRatioY = midY / WB.canvas.height;
-
-    // calculate the amounts zoomed from each edge of the screen
-    const unitsZoomedX = WB.logicWidth() * scaleAmount;
-    const unitsZoomedY = WB.logicHeight() * scaleAmount;
-
-    const unitsAddLeft = unitsZoomedX * zoomRatioX;
-    const unitsAddTop = unitsZoomedY * zoomRatioY;
-
-    WB.offsetX += unitsAddLeft;
-    WB.offsetY += unitsAddTop;
-
-    WB.redraw();
-    WB.drawBrush(true);
+    if (WB.checkScale(WB.scale * zoomAmount)) {
+      WB.scale *= zoomAmount;
+      const scaleAmount = 1 - zoomAmount;
+  
+      // calculate how many pixels the midpoints have moved in the x and y direction
+      const panX = midX - prevMidX;
+      const panY = midY - prevMidY;
+      // scale WB movement based on the zoom level
+      WB.offsetX += (panX / WB.scale);
+      WB.offsetY += (panY / WB.scale);
+  
+      // Get the relative position of the middle of the zoom.
+      // 0, 0 would be top left. 
+      // 0, 1 would be top right etc.
+      const zoomRatioX = midX / WB.canvas.width;
+      const zoomRatioY = midY / WB.canvas.height;
+  
+      // calculate the amounts zoomed from each edge of the screen
+      const unitsZoomedX = WB.logicWidth() * scaleAmount;
+      const unitsZoomedY = WB.logicHeight() * scaleAmount;
+  
+      const unitsAddLeft = unitsZoomedX * zoomRatioX;
+      const unitsAddTop = unitsZoomedY * zoomRatioY;
+  
+      WB.offsetX += unitsAddLeft;
+      WB.offsetY += unitsAddTop;
+  
+      WB.redraw();
+      WB.drawBrush(true);
+    }
   }
 
   // 更新触点坐标
@@ -519,8 +557,10 @@ const onTouchEnd = (e) => {
     WB.currentStroke = null;
     WB.beginPoint = null;
     WB.points = [];
+  } else {
+    WB.updateHash();
+    WB.doubleTouch = false;
   }
-  WB.doubleTouch = false;
 };
 /* 触屏事件处理结束 */
 

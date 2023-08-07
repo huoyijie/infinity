@@ -45,7 +45,7 @@ I would suggest the following approach and attach a proof-of-concept demo at the
 ## 地址栏显示坐标及 scale，三维空间
 
 * hash, x,y,scale
-* scale 上下限制
+* scale: [0.1, 10]，目前的实现有点小问题，不能每次都百分百缩小到 0.1 或放大到 10
 
 ## 实时显示远程 peer 坐标和颜色等，实时显示远程 peer 笔划过程，现在粒度比较粗，一个笔划是同时显示出来，没有过程。
 
@@ -53,6 +53,7 @@ I would suggest the following approach and attach a proof-of-concept demo at the
 
 * refactor WB.js
 * socket.io msgpack
+* hammer.js => touch
 
 ## Bugfix
 
