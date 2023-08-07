@@ -105,6 +105,9 @@ const WB = {
     this.socket.on('drawing', (drawing) => {
       that.onRecvDrawing(drawing);
     })
+    this.socket.on('drawings', (drawings) => {
+      that.onRecvDrawings(drawings);
+    });
 
     // window resize, redraw
     window.addEventListener('resize', () => {
@@ -226,6 +229,26 @@ const WB = {
         this.copyFromDraft(drawing.pen);
       }
     }
+  },
+
+  onRecvDrawings(drawings) {
+    for (const drawing of drawings) {
+      const { strokeId, color, opacity, size, beginPointX, beginPointY, ctrlPointX, ctrlPointY, endPointX, endPointY } = drawing;
+      const stroke = this.drawings.get(strokeId) || [];
+      const pen = { color, opacity, size };
+      const beginPoint = { x: beginPointX, y: beginPointY };
+      const controlPoint = { x: ctrlPointX, y: ctrlPointY };
+      const endPoint = { x: endPointX, y: endPointY };
+      stroke.push({
+        strokeId,
+        pen,
+        beginPoint,
+        controlPoint,
+        endPoint,
+      });
+      this.drawings.set(strokeId, stroke);
+    }
+    this.redraw();
   },
 
   // 每当移动画板、放大缩小画板、resize 窗口大小都需要重新绘制画板
@@ -510,30 +533,30 @@ const onTouchMove = (e) => {
     if (WB.checkScale(WB.scale * zoomAmount)) {
       WB.scale *= zoomAmount;
       const scaleAmount = 1 - zoomAmount;
-  
+
       // calculate how many pixels the midpoints have moved in the x and y direction
       const panX = midX - prevMidX;
       const panY = midY - prevMidY;
       // scale WB movement based on the zoom level
       WB.offsetX += (panX / WB.scale);
       WB.offsetY += (panY / WB.scale);
-  
+
       // Get the relative position of the middle of the zoom.
       // 0, 0 would be top left. 
       // 0, 1 would be top right etc.
       const zoomRatioX = midX / WB.canvas.width;
       const zoomRatioY = midY / WB.canvas.height;
-  
+
       // calculate the amounts zoomed from each edge of the screen
       const unitsZoomedX = WB.logicWidth() * scaleAmount;
       const unitsZoomedY = WB.logicHeight() * scaleAmount;
-  
+
       const unitsAddLeft = unitsZoomedX * zoomRatioX;
       const unitsAddTop = unitsZoomedY * zoomRatioY;
-  
+
       WB.offsetX += unitsAddLeft;
       WB.offsetY += unitsAddTop;
-  
+
       WB.redraw();
       WB.drawBrush(true);
     }

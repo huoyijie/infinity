@@ -1,0 +1,25 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Drawing {
+  id Int @id @default(autoincrement())
+  strokeId String
+  color String
+  opacity Int
+  size Int
+  beginPointX Float
+  beginPointY Float
+  ctrlPointX Float
+  ctrlPointY Float
+  endPointX Float
+  endPointY Float
+}

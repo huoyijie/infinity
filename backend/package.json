@@ -5,6 +5,7 @@
     "start": "node app.js"
   },
   "dependencies": {
+    "@prisma/client": "^5.1.1",
     "dotenv": "^16.3.1",
     "socket.io": "^4.7.1",
     "socket.io-msgpack-parser": "^3.0.2"
@@ -12,5 +13,8 @@
   "optionalDependencies": {
     "bufferutil": "^4.0.7",
     "utf-8-validate": "^5.0.10"
+  },
+  "devDependencies": {
+    "prisma": "^5.1.1"
   }
 }

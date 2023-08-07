@@ -76,3 +76,5 @@ useEffect(() => {
 ### frontend
 
 * NEXT_PUBLIC_SOCKETIO_URL=ws://192.168.31.53:5000
+
+## 数据持久化
