@@ -58,6 +58,9 @@ I would suggest the following approach and attach a proof-of-concept demo at the
 ## Bugfix
 
 * 刷新页面后，通过网络查看到 2 个 websocket 连接 done
+* Mysql Connection Timeout
+
+Timed out fetching a new connection from the connection pool. More info: http://pris.ly/d/connection-pool (Current connection pool timeout: 10, connection limit: 9)
 
 ```js
 useEffect(() => {

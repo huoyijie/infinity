@@ -133,12 +133,12 @@ const WB = {
 
   // 设置画笔不透明度
   setOpacity(opacity) {
-    this.pen.opacity = opacity;
+    this.pen.opacity = Number(opacity);
   },
 
   // 设置画笔粗细
   setSize(size) {
-    this.pen.size = size;
+    this.pen.size = Number(size);
     this.drawBrush();
   },
 
