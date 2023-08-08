@@ -8,6 +8,21 @@ config();
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+var drawings = [];
+setInterval(async () => {
+  if (drawings.length > 0) {
+    // 获取缓存数据
+    const data = drawings;
+    // 必须先清空缓存
+    drawings = [];
+    // 异步写入数据库
+    await prisma.drawing.createMany({
+      data,
+      skipDuplicates: true,
+    });
+  }
+}, 10);
+
 // 创建 http server
 const httpServer = createServer();
 
@@ -24,25 +39,23 @@ const io = new Server(httpServer, {
 io.on('connection', async (socket) => {
   console.log(socket.id, 'connected');
   // 收到客户端新笔划请求
-  socket.on('drawing', async (drawing) => {
+  socket.on('drawing', (drawing) => {
     // 广播给其他客户端
     socket.broadcast.emit('drawing', drawing);
     if (!drawing.end) {
       const { strokeId, pen, beginPoint, controlPoint, endPoint } = drawing;
       const { color, opacity, size } = pen;
-      await prisma.drawing.create({
-        data: {
-          strokeId,
-          color,
-          opacity,
-          size,
-          beginPointX: beginPoint.x,
-          beginPointY: beginPoint.y,
-          ctrlPointX: controlPoint.x,
-          ctrlPointY: controlPoint.y,
-          endPointX: endPoint.x,
-          endPointY: endPoint.y,
-        },
+      drawings.push({
+        strokeId,
+        color,
+        opacity,
+        size,
+        beginPointX: beginPoint.x,
+        beginPointY: beginPoint.y,
+        ctrlPointX: controlPoint.x,
+        ctrlPointY: controlPoint.y,
+        endPointX: endPoint.x,
+        endPointY: endPoint.y,
       });
     }
   });

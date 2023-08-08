@@ -58,9 +58,6 @@ I would suggest the following approach and attach a proof-of-concept demo at the
 ## Bugfix
 
 * 刷新页面后，通过网络查看到 2 个 websocket 连接 done
-* Mysql Connection Timeout
-
-Timed out fetching a new connection from the connection pool. More info: http://pris.ly/d/connection-pool (Current connection pool timeout: 10, connection limit: 9)
 
 ```js
 useEffect(() => {
@@ -81,3 +78,25 @@ useEffect(() => {
 * NEXT_PUBLIC_SOCKETIO_URL=ws://192.168.31.53:5000
 
 ## 数据持久化
+
+* Mysql Connection Timeout
+
+Timed out fetching a new connection from the connection pool. More info: http://pris.ly/d/connection-pool (Current connection pool timeout: 10, connection limit: 9)
+
+```js
+// 改为异步写入数据库
+var drawings = [];
+setInterval(async () => {
+  if (drawings.length > 0) {
+    // 获取缓存数据
+    const data = drawings;
+    // 必须先清空缓存
+    drawings = [];
+    // 异步写入数据库
+    await prisma.drawing.createMany({
+      data,
+      skipDuplicates: true,
+    });
+  }
+}, 10);
+```
