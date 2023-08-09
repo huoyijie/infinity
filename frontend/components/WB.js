@@ -9,13 +9,16 @@ const WB = {
   // socket.io 连接句柄
   socket: null,
 
-  // 画板和上下文
+  // 画板图层和上下文
   canvas: null,
   ctx: null,
+  // 远程 recv 图层和上下文
   recvCanvas: null,
   recvCtx: null,
+  // 本地 draft 图层和上下文
   draftCanvas: null,
   draftCtx: null,
+  // lazy brush 图层和上下文
   lbCanvas: null,
   lbCtx: null,
 
@@ -26,6 +29,7 @@ const WB = {
   pen: {
     // 默认颜色
     color: 'black',
+    // 不透明度
     opacity: 100,
     // 默认画笔粗细(逻辑)
     size: 10,
@@ -82,6 +86,7 @@ const WB = {
 
     // 当画板上进入不同状态时可通过此函数变换鼠标样式
     this.setCursor = setCursor;
+    // 从 URL hash 中解析三维坐标
     this.parseHash();
 
     // 添加鼠标事件处理
@@ -146,15 +151,18 @@ const WB = {
     this.drawBrush();
   },
 
+  // 检查 scale 是否合法
   checkScale(scale) {
     const s = scale || this.scale;
     return s >= 0.1 && s <= 10;
   },
 
+  // 计算当前三维坐标
   hash() {
     return `#${this.offsetX.toFixed(0)},${this.offsetY.toFixed(0)},${this.scale.toFixed(1)}`;
   },
 
+  // 从 URL hash 中解析三维坐标
   parseHash() {
     const hash = location.hash.split('#')[1];
     if (hash) {
@@ -171,6 +179,7 @@ const WB = {
     }
   },
 
+  // 更新 URL hash 中的三维坐标
   updateHash() {
     location.hash = this.hash();
   },
@@ -180,7 +189,7 @@ const WB = {
     this.lbCtx.clearRect(0, 0, this.lbCanvas.width, this.lbCanvas.height);
     if (clear) return;
 
-    const { x, y } = WB.lazyBrush.getBrushCoordinates();
+    const { x, y } = this.lazyBrush.getBrushCoordinates();
     this.lbCtx.beginPath();
     this.lbCtx.strokeStyle = this.pen.color;
     this.lbCtx.fillStyle = this.pen.color;
@@ -210,6 +219,7 @@ const WB = {
     this.draftCtx.clearRect(0, 0, this.draftCanvas.width, this.draftCanvas.height);
   },
 
+  // 在 recv 图层上画线
   drawLineOnRecv(pen, beginPoint, controlPoint, endPoint) {
     this.recvCtx.beginPath();
     this.recvCtx.strokeStyle = pen.color;
@@ -222,6 +232,7 @@ const WB = {
     this.recvCtx.closePath();
   },
 
+  // 从 Recv 图层拷贝笔划到最下方的画板图层
   copyFromRecv(pen) {
     this.ctx.globalAlpha = (pen || this.pen).opacity / 100;
     this.ctx.drawImage(this.recvCanvas, 0, 0);
@@ -253,6 +264,7 @@ const WB = {
     }
   },
 
+  // 加载服务器数据，初始化画板
   onRecvDrawings(drawings) {
     for (const drawing of drawings) {
       const { strokeId, color, opacity, size, beginPointX, beginPointY, ctrlPointX, ctrlPointY, endPointX, endPointY } = drawing;

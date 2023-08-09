@@ -52,7 +52,6 @@ I would suggest the following approach and attach a proof-of-concept demo at the
 ## 重构代码
 
 * refactor WB.js
-* socket.io msgpack
 * hammer.js => touch
 
 ## Bugfix
@@ -100,3 +99,7 @@ setInterval(async () => {
   }
 }, 10);
 ```
+
+## socket.io 通信
+
+* socket.io msgpack
