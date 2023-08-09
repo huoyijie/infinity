@@ -62,7 +62,13 @@ io.on('connection', async (socket) => {
   socket.on('disconnect', () => {
     console.log(socket.id, 'disconnect');
   });
-  socket.emit('drawings', await prisma.drawing.findMany());
+  socket.emit('drawings', await prisma.drawing.findMany({
+    orderBy: [
+      {
+        id: 'asc',
+      },
+    ],
+  }));
 });
 
 // 启动服务器
