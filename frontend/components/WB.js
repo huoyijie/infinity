@@ -12,6 +12,8 @@ const WB = {
   // 画板和上下文
   canvas: null,
   ctx: null,
+  recvCanvas: null,
+  recvCtx: null,
   draftCanvas: null,
   draftCtx: null,
   lbCanvas: null,
@@ -66,11 +68,13 @@ const WB = {
   }),
 
   // 初始化画板
-  init(canvasRef, draftCanvasRef, lbCanvasRef, setCursor) {
+  init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, setCursor) {
     const that = this;
     // 获取画板元素及上下文对象
     this.canvas = canvasRef.current;
     this.ctx = this.canvas.getContext('2d');
+    this.recvCanvas = recvCanvasRef.current;
+    this.recvCtx = this.recvCanvas.getContext('2d');
     this.draftCanvas = draftCanvasRef.current;
     this.draftCtx = this.draftCanvas.getContext('2d');
     this.lbCanvas = lbCanvasRef.current;
@@ -187,7 +191,7 @@ const WB = {
   },
 
   // 在中间 draft 图层画线段
-  drawLine(pen, beginPoint, controlPoint, endPoint) {
+  drawLineOnDraft(pen, beginPoint, controlPoint, endPoint) {
     this.draftCtx.beginPath();
     this.draftCtx.strokeStyle = pen.color;
     this.draftCtx.lineWidth = pen.size;
@@ -206,6 +210,24 @@ const WB = {
     this.draftCtx.clearRect(0, 0, this.draftCanvas.width, this.draftCanvas.height);
   },
 
+  drawLineOnRecv(pen, beginPoint, controlPoint, endPoint) {
+    this.recvCtx.beginPath();
+    this.recvCtx.strokeStyle = pen.color;
+    this.recvCtx.lineWidth = pen.size;
+    this.recvCtx.lineJoin = 'round';
+    this.recvCtx.lineCap = 'round';
+    this.recvCtx.moveTo(beginPoint.x, beginPoint.y);
+    this.recvCtx.quadraticCurveTo(controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
+    this.recvCtx.stroke();
+    this.recvCtx.closePath();
+  },
+
+  copyFromRecv(pen) {
+    this.ctx.globalAlpha = (pen || this.pen).opacity / 100;
+    this.ctx.drawImage(this.recvCanvas, 0, 0);
+    this.recvCtx.clearRect(0, 0, this.recvCanvas.width, this.recvCanvas.height);
+  },
+
   // 当从服务器接收到涂鸦数据，需要在画板上实时绘制
   onRecvDrawing(drawing) {
     if (!drawing.end) {
@@ -215,18 +237,18 @@ const WB = {
       this.drawings.set(drawing.strokeId, stroke);
     } else {
       const stroke = this.drawings.get(drawing.strokeId);
-      if (stroke) {
+      if (stroke && stroke.length > 0) {
         for (const drawing of stroke) {
-          // 在 draft 图层上绘制笔划
-          this.drawLine(
+          // 在 recv 图层上绘制笔划
+          this.drawLineOnRecv(
             this.toPen(drawing.pen),
             this.toPoint(drawing.beginPoint),
             this.toPoint(drawing.controlPoint),
             this.toPoint(drawing.endPoint),
           );
         }
-        // 当前笔划结束后，拷贝 draft 图层到最下方画板图层
-        this.copyFromDraft(drawing.pen);
+        // 当前笔划结束后，拷贝 recv 图层到最下方画板图层
+        this.copyFromRecv(drawing.pen);
       }
     }
   },
@@ -254,12 +276,15 @@ const WB = {
   // 每当移动画板、放大缩小画板、resize 窗口大小都需要重新绘制画板
   redraw() {
     // 设置画板长和宽为窗口大小
-    this.canvas.width = document.body.clientWidth;
-    this.canvas.height = document.body.clientHeight;
-    this.draftCanvas.width = document.body.clientWidth;
-    this.draftCanvas.height = document.body.clientHeight;
-    this.lbCanvas.width = document.body.clientWidth;
-    this.lbCanvas.height = document.body.clientHeight;
+    const { clientWidth, clientHeight } = document.body;
+    this.canvas.width = clientWidth;
+    this.canvas.height = clientHeight;
+    this.recvCanvas.width = clientWidth;
+    this.recvCanvas.height = clientHeight;
+    this.draftCanvas.width = clientWidth;
+    this.draftCanvas.height = clientHeight;
+    this.lbCanvas.width = clientWidth;
+    this.lbCanvas.height = clientHeight;
 
     // 清空画板图层
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -267,7 +292,7 @@ const WB = {
     for (const [_, stroke] of this.drawings) {
       // 在 draft 图层上绘制笔划
       for (const drawing of stroke) {
-        this.drawLine(
+        this.drawLineOnDraft(
           this.toPen(drawing.pen),
           this.toPoint(drawing.beginPoint),
           this.toPoint(drawing.controlPoint),
@@ -366,7 +391,7 @@ const onMouseMove = (e) => {
         x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
         y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
       }
-      WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
+      WB.drawLineOnDraft(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
 
       const drawing = {
         strokeId: WB.currentStroke,
@@ -487,7 +512,7 @@ const onTouchMove = (e) => {
         x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
         y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
       }
-      WB.drawLine(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
+      WB.drawLineOnDraft(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
 
       const drawing = {
         strokeId: WB.currentStroke,

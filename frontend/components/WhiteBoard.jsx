@@ -6,6 +6,7 @@ import OpacityContext from './OpacityContext';
 
 function WhiteBoard() {
   const canvasRef = useRef(null);
+  const recvCanvasRef = useRef(null);
   const draftCanvasRef = useRef(null);
   const lbCanvasRef = useRef(null);
   const [cursor, setCursor] = useState(null);
@@ -13,12 +14,12 @@ function WhiteBoard() {
 
   // 启动 socket 连接，初始化共享画板组件
   useEffect(() => {
-    WB.init(canvasRef, draftCanvasRef, lbCanvasRef, setCursor);
+    WB.init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, setCursor);
     return () => WB.close();
   }, []);
 
   const lbCanvasClass = () => {
-    let c = 'fixed z-30 w-full h-full';
+    let c = 'fixed z-40 w-full h-full';
     if (cursor) {
       c += ` cursor-${cursor}`;
     }
@@ -29,7 +30,8 @@ function WhiteBoard() {
     <>
       <canvas ref={lbCanvasRef} id="lazyBrushCanvas" className={lbCanvasClass()}></canvas>
       {/* 画板 */}
-      <canvas ref={draftCanvasRef} id="draftCanvas" className="fixed z-20 w-full h-full" style={{ opacity: opacity + '%' }}></canvas>
+      <canvas ref={draftCanvasRef} id="draftCanvas" className="fixed z-30 w-full h-full" style={{ opacity: opacity + '%' }}></canvas>
+      <canvas ref={recvCanvasRef} id="recvCanvas" className="fixed z-20 w-full h-full"></canvas>
       <canvas ref={canvasRef} id="canvas" className="fixed z-10 w-full h-full"></canvas>
       <WBContext.Provider value={WB}>
         <OpacityContext.Provider value={{ opacity, setOpacity }}>
