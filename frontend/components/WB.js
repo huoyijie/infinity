@@ -93,9 +93,9 @@ export default {
     // 移动鼠标事件处理
     this.lbCanvas.addEventListener('mousemove', (e) => that.mouseMove(e), false);
     // 释放鼠标事件处理
-    this.lbCanvas.addEventListener('mouseup', (e) => that.mouseUp(e), false);
+    this.lbCanvas.addEventListener('mouseup', (e) => that.mouseUp(), false);
     this.lbCanvas.addEventListener('mouseout', (e) => {
-      that.mouseUp(e);
+      that.mouseUp();
       that.drawBrush(true);
     }, false);
     // 滚轮缩放事件处理
@@ -104,8 +104,8 @@ export default {
     // 添加手机触屏事件处理
     this.lbCanvas.addEventListener('touchstart', (e) => that.touchStart(e), false);
     this.lbCanvas.addEventListener('touchmove', (e) => that.touchMove(e), false);
-    this.lbCanvas.addEventListener('touchend', (e) => that.touchEnd(e), false);
-    this.lbCanvas.addEventListener('touchcancel', (e) => that.touchEnd(e), false);
+    this.lbCanvas.addEventListener('touchend', (e) => that.touchEnd(), false);
+    this.lbCanvas.addEventListener('touchcancel', (e) => that.touchEnd(), false);
 
     // 建立 socket.io 连接
     this.socket = io(process.env.NEXT_PUBLIC_SOCKETIO_URL || 'ws://localhost:4000', {
@@ -611,7 +611,7 @@ export default {
     this.prevTouches[1] = e.touches[1];
   },
 
-  touchEnd(e) {
+  touchEnd() {
     if (this.singleTouch) {
       // 发送笔划结束，不包含画笔和数据
       this.socket.emit('drawing', {
