@@ -3,9 +3,10 @@ import msgpackParser from 'socket.io-msgpack-parser';
 import { LazyBrush } from 'lazy-brush';
 import { v4 as uuidv4 } from 'uuid';
 
+// 通过 uuid 生成 stroke id
 const newStrokeId = () => uuidv4().replaceAll('-', '');
 
-const WB = {
+export default {
   // socket.io 连接句柄
   socket: null,
 
@@ -90,22 +91,23 @@ const WB = {
     this.parseHash();
 
     // 添加鼠标事件处理
-    this.lbCanvas.addEventListener('mousedown', onMouseDown, false);
+    this.lbCanvas.addEventListener('mousedown', (e) => that.mouseDown(e), false);
+    // 移动鼠标事件处理
+    this.lbCanvas.addEventListener('mousemove', (e) => that.mouseMove(e), false);
     // 释放鼠标事件处理
-    this.lbCanvas.addEventListener('mouseup', onMouseUp, false);
-    this.lbCanvas.addEventListener('mouseout', onMouseUp, false);
-    this.lbCanvas.addEventListener('mouseout', () => {
+    this.lbCanvas.addEventListener('mouseup', (e) => that.mouseUp(e), false);
+    this.lbCanvas.addEventListener('mouseout', (e) => {
+      that.mouseUp(e);
       that.drawBrush(true);
     }, false);
-    this.lbCanvas.addEventListener('wheel', onMouseWheel, false);
-    // 移动鼠标事件处理
-    this.lbCanvas.addEventListener('mousemove', onMouseMove, false);
+    // 滚轮缩放事件处理
+    this.lbCanvas.addEventListener('wheel', (e) => that.mouseWheel(e), false);
 
     // 添加手机触屏事件处理
-    this.lbCanvas.addEventListener('touchstart', onTouchStart, false);
-    this.lbCanvas.addEventListener('touchend', onTouchEnd, false);
-    this.lbCanvas.addEventListener('touchcancel', onTouchEnd, false);
-    this.lbCanvas.addEventListener('touchmove', onTouchMove, false);
+    this.lbCanvas.addEventListener('touchstart', (e) => that.touchStart(e), false);
+    this.lbCanvas.addEventListener('touchmove', (e) => that.touchMove(e), false);
+    this.lbCanvas.addEventListener('touchend', (e) => that.touchEnd(e), false);
+    this.lbCanvas.addEventListener('touchcancel', (e) => that.touchEnd(e), false);
 
     // 建立 socket.io 连接
     this.socket = io(process.env.NEXT_PUBLIC_SOCKETIO_URL || 'ws://localhost:4000', {
@@ -367,261 +369,258 @@ const WB = {
     return this.canvas.width / this.scale;
   },
   /* 坐标转换函数结束 */
-};
 
-/* 鼠标事件处理开始 */
-const onMouseDown = (e) => {
-  // 判断按键
-  WB.leftMouseDown = e.button == 0;
-  WB.rightMouseDown = e.button == 2;
-  if (WB.leftMouseDown) {
-    WB.beginPoint = WB.lazyBrush.getBrushCoordinates();
-    WB.points.push(WB.beginPoint);
-    WB.currentStroke = newStrokeId();
-    WB.setCursor('crosshair');
-  } else if (WB.rightMouseDown) {
-    WB.setCursor('move');
-  }
-  // 更新鼠标移动前坐标
-  WB.prevCursorX = e.pageX;
-  WB.prevCursorY = e.pageY;
-};
+  /* 鼠标事件处理开始 */
+  mouseDown(e) {
+    // 判断按键
+    this.leftMouseDown = e.button == 0;
+    this.rightMouseDown = e.button == 2;
+    if (this.leftMouseDown) {
+      this.beginPoint = this.lazyBrush.getBrushCoordinates();
+      this.points.push(this.beginPoint);
+      this.currentStroke = newStrokeId();
+      this.setCursor('crosshair');
+    } else if (this.rightMouseDown) {
+      this.setCursor('move');
+    }
+    // 更新鼠标移动前坐标
+    this.prevCursorX = e.pageX;
+    this.prevCursorY = e.pageY;
+  },
 
-const onMouseMove = (e) => {
-  // 更新移动后坐标
-  const cursorX = e.pageX;
-  const cursorY = e.pageY;
+  mouseMove(e) {
+    // 更新移动后坐标
+    const cursorX = e.pageX;
+    const cursorY = e.pageY;
 
-  // 按住左键移动鼠标进行涂鸦
-  if (WB.lazyBrush.update({ x: e.pageX, y: e.pageY }) && WB.leftMouseDown) {
-    WB.points.push(WB.lazyBrush.getBrushCoordinates());
-    if (WB.points.length >= 3) {
-      // 绘制笔划
-      const lastTwoPoints = WB.points.slice(-2);
-      const controlPoint = lastTwoPoints[0];
-      const endPoint = {
-        x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
-        y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
+    // 按住左键移动鼠标进行涂鸦
+    if (this.lazyBrush.update({ x: e.pageX, y: e.pageY }) && this.leftMouseDown) {
+      this.points.push(this.lazyBrush.getBrushCoordinates());
+      if (this.points.length >= 3) {
+        // 绘制笔划
+        const lastTwoPoints = this.points.slice(-2);
+        const controlPoint = lastTwoPoints[0];
+        const endPoint = {
+          x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
+          y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
+        }
+        this.drawLineOnDraft(this.toPen(), this.beginPoint, controlPoint, endPoint);
+
+        const drawing = {
+          strokeId: this.currentStroke,
+          pen: { ...this.pen },
+          beginPoint: this.toLogicPoint(this.beginPoint),
+          controlPoint: this.toLogicPoint(controlPoint),
+          endPoint: this.toLogicPoint(endPoint),
+        };
+        // 保存笔划
+        const stroke = this.drawings.get(drawing.strokeId) || [];
+        stroke.push(drawing);
+        this.drawings.set(drawing.strokeId, stroke);
+        // 把当前笔划发送到服务器
+        this.socket.emit('drawing', drawing);
+
+        // 更新起始点
+        this.beginPoint = endPoint;
       }
-      WB.drawLineOnDraft(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
-
-      const drawing = {
-        strokeId: WB.currentStroke,
-        pen: { ...WB.pen },
-        beginPoint: WB.toLogicPoint(WB.beginPoint),
-        controlPoint: WB.toLogicPoint(controlPoint),
-        endPoint: WB.toLogicPoint(endPoint),
-      };
-      // 保存笔划
-      const stroke = WB.drawings.get(drawing.strokeId) || [];
-      stroke.push(drawing);
-      WB.drawings.set(drawing.strokeId, stroke);
-      // 把当前笔划发送到服务器
-      WB.socket.emit('drawing', drawing);
-
-      // 更新起始点
-      WB.beginPoint = endPoint;
     }
-  }
 
-  // 画 brush
-  WB.drawBrush();
+    // 画 brush
+    this.drawBrush();
 
-  // 按住右键移动鼠标进行画板移动
-  if (WB.rightMouseDown) {
-    WB.offsetX += (cursorX - WB.prevCursorX) / WB.scale;
-    WB.offsetY += (cursorY - WB.prevCursorY) / WB.scale;
-    // 移动画板过程中会不断重新绘制
-    WB.redraw();
-  }
+    // 按住右键移动鼠标进行画板移动
+    if (this.rightMouseDown) {
+      this.offsetX += (cursorX - this.prevCursorX) / this.scale;
+      this.offsetY += (cursorY - this.prevCursorY) / this.scale;
+      // 移动画板过程中会不断重新绘制
+      this.redraw();
+    }
 
-  // 更新移动前鼠标坐标为最新值
-  WB.prevCursorX = cursorX;
-  WB.prevCursorY = cursorY;
-};
+    // 更新移动前鼠标坐标为最新值
+    this.prevCursorX = cursorX;
+    this.prevCursorY = cursorY;
+  },
 
-const onMouseUp = (e) => {
-  if (WB.leftMouseDown) {
-    // 发送笔划结束，不包含画笔和数据
-    WB.socket.emit('drawing', {
-      strokeId: WB.currentStroke,
-      end: true,
-      pen: { ...WB.pen },
-    });
-    WB.copyFromDraft();
-    WB.leftMouseDown = false;
-    WB.currentStroke = null;
-    WB.beginPoint = null;
-    WB.points = [];
-  } else {
-    WB.updateHash();
-    WB.rightMouseDown = false;
-  }
-  // 恢复默认鼠标样式
-  WB.setCursor(null);
-};
+  mouseUp(e) {
+    if (this.leftMouseDown) {
+      // 发送笔划结束，不包含画笔和数据
+      this.socket.emit('drawing', {
+        strokeId: this.currentStroke,
+        end: true,
+        pen: { ...this.pen },
+      });
+      this.copyFromDraft();
+      this.leftMouseDown = false;
+      this.currentStroke = null;
+      this.beginPoint = null;
+      this.points = [];
+    } else {
+      this.updateHash();
+      this.rightMouseDown = false;
+    }
+    // 恢复默认鼠标样式
+    this.setCursor(null);
+  },
 
-const onMouseWheel = (e) => {
-  const deltaY = e.deltaY;
-  const scaleAmount = -deltaY / 500;
+  mouseWheel(e) {
+    const deltaY = e.deltaY;
+    const scaleAmount = -deltaY / 500;
 
-  if (!WB.checkScale(WB.scale * (1 + scaleAmount))) return;
+    if (!this.checkScale(this.scale * (1 + scaleAmount))) return;
 
-  WB.scale *= (1 + scaleAmount);
+    this.scale *= (1 + scaleAmount);
 
-  // 基于鼠标箭头位置决定怎样伸缩
-  var distX = e.pageX / WB.canvas.width;
-  var distY = e.pageY / WB.canvas.height;
+    // 基于鼠标箭头位置决定怎样伸缩
+    var distX = e.pageX / this.canvas.width;
+    var distY = e.pageY / this.canvas.height;
 
-  // 计算伸缩量
-  const unitsZoomedX = WB.logicWidth() * scaleAmount;
-  const unitsZoomedY = WB.logicHeight() * scaleAmount;
+    // 计算伸缩量
+    const unitsZoomedX = this.logicWidth() * scaleAmount;
+    const unitsZoomedY = this.logicHeight() * scaleAmount;
 
-  const unitsAddLeft = unitsZoomedX * distX;
-  const unitsAddTop = unitsZoomedY * distY;
+    const unitsAddLeft = unitsZoomedX * distX;
+    const unitsAddTop = unitsZoomedY * distY;
 
-  WB.offsetX -= unitsAddLeft;
-  WB.offsetY -= unitsAddTop;
+    this.offsetX -= unitsAddLeft;
+    this.offsetY -= unitsAddTop;
 
-  WB.redraw();
-  WB.drawBrush();
-  WB.updateHash();
-};
-/* 鼠标事件处理结束 */
+    this.redraw();
+    this.drawBrush();
+    this.updateHash();
+  },
+  /* 鼠标事件处理结束 */
+  /* 触屏事件处理开始 */
+  touchStart(e) {
+    // 检测到一个触屏点为单手指
+    this.singleTouch = e.touches.length == 1;
+    // 多于 2 个触点等同于 2 个，双手指
+    this.doubleTouch = e.touches.length > 1;
+    // 只记录 2 个触点坐标
+    this.prevTouches[0] = e.touches[0];
+    this.prevTouches[1] = e.touches[1];
+    if (this.singleTouch) {
+      this.lazyBrush.update({ x: e.touches[0].pageX, y: e.touches[0].pageY });
+      this.currentStroke = newStrokeId();
+      this.beginPoint = this.lazyBrush.getBrushCoordinates();
+      this.points.push(this.beginPoint);
+    }
+  },
 
-/* 触屏事件处理开始 */
-const onTouchStart = (e) => {
-  // 检测到一个触屏点为单手指
-  WB.singleTouch = e.touches.length == 1;
-  // 多于 2 个触点等同于 2 个，双手指
-  WB.doubleTouch = e.touches.length > 1;
-  // 只记录 2 个触点坐标
-  WB.prevTouches[0] = e.touches[0];
-  WB.prevTouches[1] = e.touches[1];
-  if (WB.singleTouch) {
-    WB.lazyBrush.update({ x: e.touches[0].pageX, y: e.touches[0].pageY });
-    WB.currentStroke = newStrokeId();
-    WB.beginPoint = WB.lazyBrush.getBrushCoordinates();
-    WB.points.push(WB.beginPoint);
-  }
-};
+  touchMove(e) {
+    // 获取第 1 个触点坐标
+    const touch0X = e.touches[0].pageX;
+    const touch0Y = e.touches[0].pageY;
+    const prevTouch0X = this.prevTouches[0].pageX;
+    const prevTouch0Y = this.prevTouches[0].pageY;
 
-const onTouchMove = (e) => {
-  // 获取第 1 个触点坐标
-  const touch0X = e.touches[0].pageX;
-  const touch0Y = e.touches[0].pageY;
-  const prevTouch0X = WB.prevTouches[0].pageX;
-  const prevTouch0Y = WB.prevTouches[0].pageY;
+    // 一根手指绘制笔划
+    if (this.lazyBrush.update({ x: touch0X, y: touch0Y }) && this.singleTouch) {
+      this.points.push(this.lazyBrush.getBrushCoordinates());
+      if (this.points.length >= 3) {
+        // 绘制笔划
+        const lastTwoPoints = this.points.slice(-2);
+        const controlPoint = lastTwoPoints[0];
+        const endPoint = {
+          x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
+          y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
+        }
+        this.drawLineOnDraft(this.toPen(), this.beginPoint, controlPoint, endPoint);
 
-  // 一根手指绘制笔划
-  if (WB.lazyBrush.update({ x: touch0X, y: touch0Y }) && WB.singleTouch) {
-    WB.points.push(WB.lazyBrush.getBrushCoordinates());
-    if (WB.points.length >= 3) {
-      // 绘制笔划
-      const lastTwoPoints = WB.points.slice(-2);
-      const controlPoint = lastTwoPoints[0];
-      const endPoint = {
-        x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
-        y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
+        const drawing = {
+          strokeId: this.currentStroke,
+          pen: { ...this.pen },
+          beginPoint: this.toLogicPoint(this.beginPoint),
+          controlPoint: this.toLogicPoint(controlPoint),
+          endPoint: this.toLogicPoint(endPoint),
+        };
+
+        // 保存笔划
+        const stroke = this.drawings.get(drawing.strokeId) || [];
+        stroke.push(drawing);
+        this.drawings.set(drawing.strokeId, stroke);
+        // 把当前笔划发送到服务器
+        this.socket.emit('drawing', drawing);
+
+        // 更新起始点
+        this.beginPoint = endPoint;
       }
-      WB.drawLineOnDraft(WB.toPen(), WB.beginPoint, controlPoint, endPoint);
-
-      const drawing = {
-        strokeId: WB.currentStroke,
-        pen: { ...WB.pen },
-        beginPoint: WB.toLogicPoint(WB.beginPoint),
-        controlPoint: WB.toLogicPoint(controlPoint),
-        endPoint: WB.toLogicPoint(endPoint),
-      };
-
-      // 保存笔划
-      const stroke = WB.drawings.get(drawing.strokeId) || [];
-      stroke.push(drawing);
-      WB.drawings.set(drawing.strokeId, stroke);
-      // 把当前笔划发送到服务器
-      WB.socket.emit('drawing', drawing);
-
-      // 更新起始点
-      WB.beginPoint = endPoint;
+      this.drawBrush();
     }
-    WB.drawBrush();
-  }
 
-  // 两根以上手指移动或伸缩画板
-  if (WB.doubleTouch) {
-    // 获取第 2 个触点坐标
-    const touch1X = e.touches[1].pageX;
-    const touch1Y = e.touches[1].pageY;
-    const prevTouch1X = WB.prevTouches[1].pageX;
-    const prevTouch1Y = WB.prevTouches[1].pageY;
+    // 两根以上手指移动或伸缩画板
+    if (this.doubleTouch) {
+      // 获取第 2 个触点坐标
+      const touch1X = e.touches[1].pageX;
+      const touch1Y = e.touches[1].pageY;
+      const prevTouch1X = this.prevTouches[1].pageX;
+      const prevTouch1Y = this.prevTouches[1].pageY;
 
-    // 获取 2 个触点中间坐标
-    const midX = (touch0X + touch1X) / 2;
-    const midY = (touch0Y + touch1Y) / 2;
-    const prevMidX = (prevTouch0X + prevTouch1X) / 2;
-    const prevMidY = (prevTouch0Y + prevTouch1Y) / 2;
+      // 获取 2 个触点中间坐标
+      const midX = (touch0X + touch1X) / 2;
+      const midY = (touch0Y + touch1Y) / 2;
+      const prevMidX = (prevTouch0X + prevTouch1X) / 2;
+      const prevMidY = (prevTouch0Y + prevTouch1Y) / 2;
 
-    // 计算触点之间的距离
-    const hypot = Math.sqrt(Math.pow((touch0X - touch1X), 2) + Math.pow((touch0Y - touch1Y), 2));
-    const prevHypot = Math.sqrt(Math.pow((prevTouch0X - prevTouch1X), 2) + Math.pow((prevTouch0Y - prevTouch1Y), 2));
+      // 计算触点之间的距离
+      const hypot = Math.sqrt(Math.pow((touch0X - touch1X), 2) + Math.pow((touch0Y - touch1Y), 2));
+      const prevHypot = Math.sqrt(Math.pow((prevTouch0X - prevTouch1X), 2) + Math.pow((prevTouch0Y - prevTouch1Y), 2));
 
-    // calculate the screen scale change
-    const zoomAmount = hypot / prevHypot;
-    if (WB.checkScale(WB.scale * zoomAmount)) {
-      WB.scale *= zoomAmount;
-      const scaleAmount = 1 - zoomAmount;
+      // calculate the screen scale change
+      const zoomAmount = hypot / prevHypot;
+      if (this.checkScale(this.scale * zoomAmount)) {
+        this.scale *= zoomAmount;
+        const scaleAmount = 1 - zoomAmount;
 
-      // calculate how many pixels the midpoints have moved in the x and y direction
-      const panX = midX - prevMidX;
-      const panY = midY - prevMidY;
-      // scale WB movement based on the zoom level
-      WB.offsetX += (panX / WB.scale);
-      WB.offsetY += (panY / WB.scale);
+        // calculate how many pixels the midpoints have moved in the x and y direction
+        const panX = midX - prevMidX;
+        const panY = midY - prevMidY;
+        // scale movement based on the zoom level
+        this.offsetX += (panX / this.scale);
+        this.offsetY += (panY / this.scale);
 
-      // Get the relative position of the middle of the zoom.
-      // 0, 0 would be top left. 
-      // 0, 1 would be top right etc.
-      const zoomRatioX = midX / WB.canvas.width;
-      const zoomRatioY = midY / WB.canvas.height;
+        // Get the relative position of the middle of the zoom.
+        // 0, 0 would be top left. 
+        // 0, 1 would be top right etc.
+        const zoomRatioX = midX / this.canvas.width;
+        const zoomRatioY = midY / this.canvas.height;
 
-      // calculate the amounts zoomed from each edge of the screen
-      const unitsZoomedX = WB.logicWidth() * scaleAmount;
-      const unitsZoomedY = WB.logicHeight() * scaleAmount;
+        // calculate the amounts zoomed from each edge of the screen
+        const unitsZoomedX = this.logicWidth() * scaleAmount;
+        const unitsZoomedY = this.logicHeight() * scaleAmount;
 
-      const unitsAddLeft = unitsZoomedX * zoomRatioX;
-      const unitsAddTop = unitsZoomedY * zoomRatioY;
+        const unitsAddLeft = unitsZoomedX * zoomRatioX;
+        const unitsAddTop = unitsZoomedY * zoomRatioY;
 
-      WB.offsetX += unitsAddLeft;
-      WB.offsetY += unitsAddTop;
+        this.offsetX += unitsAddLeft;
+        this.offsetY += unitsAddTop;
 
-      WB.redraw();
-      WB.drawBrush(true);
+        this.redraw();
+        this.drawBrush(true);
+      }
+    }
+
+    // 更新触点坐标
+    this.prevTouches[0] = e.touches[0];
+    this.prevTouches[1] = e.touches[1];
+  },
+
+  touchEnd(e) {
+    if (this.singleTouch) {
+      // 发送笔划结束，不包含画笔和数据
+      this.socket.emit('drawing', {
+        strokeId: this.currentStroke,
+        end: true,
+        pen: { ...this.pen },
+      });
+      this.copyFromDraft();
+      this.singleTouch = false;
+      this.currentStroke = null;
+      this.beginPoint = null;
+      this.points = [];
+    } else {
+      this.updateHash();
+      this.doubleTouch = false;
     }
   }
-
-  // 更新触点坐标
-  WB.prevTouches[0] = e.touches[0];
-  WB.prevTouches[1] = e.touches[1];
+  /* 触屏事件处理结束 */
 };
-
-const onTouchEnd = (e) => {
-  if (WB.singleTouch) {
-    // 发送笔划结束，不包含画笔和数据
-    WB.socket.emit('drawing', {
-      strokeId: WB.currentStroke,
-      end: true,
-      pen: { ...WB.pen },
-    });
-    WB.copyFromDraft();
-    WB.singleTouch = false;
-    WB.currentStroke = null;
-    WB.beginPoint = null;
-    WB.points = [];
-  } else {
-    WB.updateHash();
-    WB.doubleTouch = false;
-  }
-};
-/* 触屏事件处理结束 */
-
-export default WB;
