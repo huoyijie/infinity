@@ -8,9 +8,12 @@ config();
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+var taskNum = 0;
 var drawings = [];
 setInterval(async () => {
-  if (drawings.length > 0) {
+  // 最多同时存在 5 个写数据库任务，最多占据 5 个数据库连接
+  if (taskNum < 5 && drawings.length > 0) {
+    taskNum++;
     // 获取缓存数据
     const data = drawings;
     // 必须先清空缓存
@@ -20,6 +23,7 @@ setInterval(async () => {
       data,
       skipDuplicates: true,
     });
+    taskNum--;
   }
 }, 10);
 
