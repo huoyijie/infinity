@@ -9,12 +9,13 @@ function WhiteBoard() {
   const recvCanvasRef = useRef(null);
   const draftCanvasRef = useRef(null);
   const lbCanvasRef = useRef(null);
+  const [mode, setMode] = useState('move');
   const [cursor, setCursor] = useState(null);
   const [opacity, setOpacity] = useState(100);
 
   // 启动 socket 连接，初始化共享画板组件
   useEffect(() => {
-    WB.init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, setCursor);
+    WB.init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, mode, setCursor);
     return () => WB.close();
   }, []);
 
@@ -35,7 +36,10 @@ function WhiteBoard() {
       <canvas ref={canvasRef} id="canvas" className="fixed z-10 w-full h-full"></canvas>
       <WBContext.Provider value={WB}>
         <OpacityContext.Provider value={{ opacity, setOpacity }}>
-          <Toolbar />
+          <Toolbar mode={mode} setMode={(mode) => {
+            WB.setMode(mode);
+            setMode(mode);
+          }} />
         </OpacityContext.Provider>
       </WBContext.Provider>
     </>

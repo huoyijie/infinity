@@ -1,5 +1,5 @@
-export default function Button({ Icon, onClick }) {
+export default function Button({ Icon, selected, onClick }) {
   return (
-    <div className="bg-sky-500 hover:bg-sky-600 hover:cursor-pointer active:bg-sky-700 w-10 h-10 rounded p-2 text-white" onClick={onClick}><Icon /></div>
+    <div className={`${selected ? 'bg-sky-950' : 'bg-sky-500'} hover:bg-sky-600 hover:cursor-pointer w-10 h-10 rounded p-2 text-white`} onClick={onClick}><Icon /></div>
   );
 }

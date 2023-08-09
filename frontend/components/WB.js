@@ -24,6 +24,7 @@ export default {
   lbCtx: null,
 
   // 根据不同状态设置鼠标样式，如正在涂鸦或者移动画板
+  mode: 'move',
   setCursor: null,
 
   // 画笔
@@ -49,11 +50,7 @@ export default {
   // 鼠标移动前坐标
   prevCursorX: 0,
   prevCursorY: 0,
-  // 按住左键涂鸦
   leftMouseDown: false,
-  // 按住右键移动画板
-  rightMouseDown: false,
-  // 通过滚轮控制放大 or 缩小画板
 
   // 触屏 (最多 2 个触点)
   prevTouches: [null, null],
@@ -73,7 +70,7 @@ export default {
   }),
 
   // 初始化画板
-  init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, setCursor) {
+  init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, mode, setCursor) {
     const that = this;
     // 获取画板元素及上下文对象
     this.canvas = canvasRef.current;
@@ -86,6 +83,7 @@ export default {
     this.lbCtx = this.lbCanvas.getContext('2d');
 
     // 当画板上进入不同状态时可通过此函数变换鼠标样式
+    this.mode = mode;
     this.setCursor = setCursor;
     // 从 URL hash 中解析三维坐标
     this.parseHash();
@@ -134,6 +132,11 @@ export default {
   // 清理资源
   close() {
     this.socket.disconnect();
+  },
+
+  // 设置模式
+  setMode(mode) {
+    this.mode = mode;
   },
 
   // 设置画笔颜色
@@ -188,17 +191,19 @@ export default {
 
   // 在最上面图层画 Brush
   drawBrush(clear) {
-    this.lbCtx.clearRect(0, 0, this.lbCanvas.width, this.lbCanvas.height);
-    if (clear) return;
-
-    const { x, y } = this.lazyBrush.getBrushCoordinates();
-    this.lbCtx.beginPath();
-    this.lbCtx.strokeStyle = this.pen.color;
-    this.lbCtx.fillStyle = this.pen.color;
-    this.lbCtx.arc(x, y, Math.max(this.toPenSize() / 2, 2), 0, Math.PI * 2);
-    this.lbCtx.fill();
-    this.lbCtx.stroke();
-    this.lbCtx.closePath();
+    if (this.mode === 'draw') {
+      this.lbCtx.clearRect(0, 0, this.lbCanvas.width, this.lbCanvas.height);
+      if (clear) return;
+  
+      const { x, y } = this.lazyBrush.getBrushCoordinates();
+      this.lbCtx.beginPath();
+      this.lbCtx.strokeStyle = this.pen.color;
+      this.lbCtx.fillStyle = this.pen.color;
+      this.lbCtx.arc(x, y, Math.max(this.toPenSize() / 2, 2), 0, Math.PI * 2);
+      this.lbCtx.fill();
+      this.lbCtx.stroke();
+      this.lbCtx.closePath();
+    }
   },
 
   // 在中间 draft 图层画线段
@@ -372,16 +377,17 @@ export default {
 
   /* 鼠标事件处理开始 */
   mouseDown(e) {
-    // 判断按键
-    this.leftMouseDown = e.button == 0;
-    this.rightMouseDown = e.button == 2;
+    // 是否按下鼠标左键
+    this.leftMouseDown = e.button === 0;
     if (this.leftMouseDown) {
-      this.beginPoint = this.lazyBrush.getBrushCoordinates();
-      this.points.push(this.beginPoint);
-      this.currentStroke = newStrokeId();
-      this.setCursor('crosshair');
-    } else if (this.rightMouseDown) {
-      this.setCursor('move');
+      if (this.mode === 'draw') {
+        this.beginPoint = this.lazyBrush.getBrushCoordinates();
+        this.points.push(this.beginPoint);
+        this.currentStroke = newStrokeId();
+        this.setCursor('crosshair');
+      } else if (this.mode === 'move') {
+        this.setCursor('move');
+      }
     }
     // 更新鼠标移动前坐标
     this.prevCursorX = e.pageX;
@@ -393,8 +399,8 @@ export default {
     const cursorX = e.pageX;
     const cursorY = e.pageY;
 
-    // 按住左键移动鼠标进行涂鸦
-    if (this.lazyBrush.update({ x: e.pageX, y: e.pageY }) && this.leftMouseDown) {
+    // draw 涂鸦模式
+    if (this.lazyBrush.update({ x: e.pageX, y: e.pageY }) && this.mode === 'draw' && this.leftMouseDown) {
       this.points.push(this.lazyBrush.getBrushCoordinates());
       if (this.points.length >= 3) {
         // 绘制笔划
@@ -425,41 +431,42 @@ export default {
       }
     }
 
-    // 画 brush
-    this.drawBrush();
-
-    // 按住右键移动鼠标进行画板移动
-    if (this.rightMouseDown) {
+    // move 移动模式
+    if (this.mode === 'move' && this.leftMouseDown) {
       this.offsetX += (cursorX - this.prevCursorX) / this.scale;
       this.offsetY += (cursorY - this.prevCursorY) / this.scale;
       // 移动画板过程中会不断重新绘制
       this.redraw();
     }
 
+    // 画 brush
+    this.drawBrush();
+
     // 更新移动前鼠标坐标为最新值
     this.prevCursorX = cursorX;
     this.prevCursorY = cursorY;
   },
 
-  mouseUp(e) {
+  mouseUp() {
     if (this.leftMouseDown) {
-      // 发送笔划结束，不包含画笔和数据
-      this.socket.emit('drawing', {
-        strokeId: this.currentStroke,
-        end: true,
-        pen: { ...this.pen },
-      });
-      this.copyFromDraft();
-      this.leftMouseDown = false;
-      this.currentStroke = null;
-      this.beginPoint = null;
-      this.points = [];
-    } else {
-      this.updateHash();
-      this.rightMouseDown = false;
+      if (this.mode === 'draw') {
+        // 发送笔划结束，不包含画笔和数据
+        this.socket.emit('drawing', {
+          strokeId: this.currentStroke,
+          end: true,
+          pen: { ...this.pen },
+        });
+        this.copyFromDraft();
+        this.currentStroke = null;
+        this.beginPoint = null;
+        this.points = [];
+      } else if (this.mode === 'move') {
+        this.updateHash();
+      }
     }
     // 恢复默认鼠标样式
     this.setCursor(null);
+    this.leftMouseDown = false;
   },
 
   mouseWheel(e) {
