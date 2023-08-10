@@ -156,10 +156,34 @@ export default {
     this.drawBrush();
   },
 
-  // 检查 scale 是否合法
-  checkScale(scale) {
-    const s = scale || this.scale;
-    return s >= 0.1 && s <= 10;
+  // 计算 wheel scale 阈值
+  thresholdingWheelScale(scaleAmount) {
+    const s = this.scale * (1 + scaleAmount);
+    if (s < 0.1) {
+      scaleAmount = 0.1 / this.scale - 1;
+      this.scale = 0.1;
+    } else if (s > 10) {
+      scaleAmount = 10 / this.scale - 1;
+      this.scale = 10;
+    } else {
+      this.scale = s;
+    }
+    return scaleAmount;
+  },
+
+  // 计算 touch scale 阈值
+  thresholdingTouchScale(scaleAmount) {
+    const s = this.scale * (1 - scaleAmount);
+    if (s < 0.1) {
+      scaleAmount = 1 - 0.1 / this.scale;
+      this.scale = 0.1;
+    } else if (s > 10) {
+      scaleAmount = 1 - 10 / this.scale;
+      this.scale = 10;
+    } else {
+      this.scale = s;
+    }
+    return scaleAmount;
   },
 
   // 计算当前三维坐标
@@ -175,7 +199,7 @@ export default {
       this.offsetX = (offsetX && Number(offsetX)) || 0;
       this.offsetY = (offsetY && Number(offsetY)) || 0;
       this.scale = (scale && Number(scale)) || 1;
-      if (!this.checkScale()) {
+      if (this.scale < 0.1 || this.scale > 10) {
         this.offsetX = 0;
         this.offsetY = 0;
         this.scale = 1;
@@ -194,7 +218,7 @@ export default {
     if (this.mode === 'draw') {
       this.lbCtx.clearRect(0, 0, this.lbCanvas.width, this.lbCanvas.height);
       if (clear) return;
-  
+
       const { x, y } = this.lazyBrush.getBrushCoordinates();
       this.lbCtx.beginPath();
       this.lbCtx.strokeStyle = this.pen.color;
@@ -435,6 +459,7 @@ export default {
     if (this.mode === 'move' && this.leftMouseDown) {
       this.offsetX += (cursorX - this.prevCursorX) / this.scale;
       this.offsetY += (cursorY - this.prevCursorY) / this.scale;
+      this.updateHash();
       // 移动画板过程中会不断重新绘制
       this.redraw();
     }
@@ -463,19 +488,14 @@ export default {
       } else if (this.mode === 'move') {
         this.updateHash();
       }
+      this.leftMouseDown = false;
     }
     // 恢复默认鼠标样式
     this.setCursor(null);
-    this.leftMouseDown = false;
   },
 
   mouseWheel(e) {
-    const deltaY = e.deltaY;
-    const scaleAmount = -deltaY / 500;
-
-    if (!this.checkScale(this.scale * (1 + scaleAmount))) return;
-
-    this.scale *= (1 + scaleAmount);
+    const scaleAmount = this.thresholdingWheelScale(-e.deltaY / 4800);
 
     // 基于鼠标箭头位置决定怎样伸缩
     var distX = e.pageX / this.canvas.width;
@@ -562,48 +582,45 @@ export default {
       const prevTouch1X = this.prevTouches[1].pageX;
       const prevTouch1Y = this.prevTouches[1].pageY;
 
+      // 计算触点之间的距离
+      const hypot = Math.sqrt(Math.pow((touch0X - touch1X), 2) + Math.pow((touch0Y - touch1Y), 2));
+      const prevHypot = Math.sqrt(Math.pow((prevTouch0X - prevTouch1X), 2) + Math.pow((prevTouch0Y - prevTouch1Y), 2));
+
       // 获取 2 个触点中间坐标
       const midX = (touch0X + touch1X) / 2;
       const midY = (touch0Y + touch1Y) / 2;
       const prevMidX = (prevTouch0X + prevTouch1X) / 2;
       const prevMidY = (prevTouch0Y + prevTouch1Y) / 2;
 
-      // 计算触点之间的距离
-      const hypot = Math.sqrt(Math.pow((touch0X - touch1X), 2) + Math.pow((touch0Y - touch1Y), 2));
-      const prevHypot = Math.sqrt(Math.pow((prevTouch0X - prevTouch1X), 2) + Math.pow((prevTouch0Y - prevTouch1Y), 2));
+      // 计算 2 个触点的中间点在 x, y 两轴方向的位移
+      const panX = midX - prevMidX;
+      const panY = midY - prevMidY;
+      // 累加此次移动带来的偏移量
+      this.offsetX += (panX / this.scale);
+      this.offsetY += (panY / this.scale);
 
-      // calculate the screen scale change
-      const zoomAmount = hypot / prevHypot;
-      if (this.checkScale(this.scale * zoomAmount)) {
-        this.scale *= zoomAmount;
-        const scaleAmount = 1 - zoomAmount;
+      // 计算屏幕伸缩量
+      const scaleAmount = this.thresholdingTouchScale(1 - hypot / prevHypot);
 
-        // calculate how many pixels the midpoints have moved in the x and y direction
-        const panX = midX - prevMidX;
-        const panY = midY - prevMidY;
-        // scale movement based on the zoom level
-        this.offsetX += (panX / this.scale);
-        this.offsetY += (panY / this.scale);
+      // 计算 x, y 轴单位伸缩值
+      const unitsZoomedX = this.logicWidth() * scaleAmount;
+      const unitsZoomedY = this.logicHeight() * scaleAmount;
+      
+      // 以移动后的当前 2 个触点的中间点为中心进行伸缩
+      const zoomRatioX = midX / this.canvas.width;
+      const zoomRatioY = midY / this.canvas.height;
 
-        // Get the relative position of the middle of the zoom.
-        // 0, 0 would be top left. 
-        // 0, 1 would be top right etc.
-        const zoomRatioX = midX / this.canvas.width;
-        const zoomRatioY = midY / this.canvas.height;
+      // 伸缩带来的偏移量
+      const unitsAddLeft = unitsZoomedX * zoomRatioX;
+      const unitsAddTop = unitsZoomedY * zoomRatioY;
 
-        // calculate the amounts zoomed from each edge of the screen
-        const unitsZoomedX = this.logicWidth() * scaleAmount;
-        const unitsZoomedY = this.logicHeight() * scaleAmount;
+      // 累加此次伸缩带来的偏移量
+      this.offsetX += unitsAddLeft;
+      this.offsetY += unitsAddTop;
 
-        const unitsAddLeft = unitsZoomedX * zoomRatioX;
-        const unitsAddTop = unitsZoomedY * zoomRatioY;
-
-        this.offsetX += unitsAddLeft;
-        this.offsetY += unitsAddTop;
-
-        this.redraw();
-        this.drawBrush(true);
-      }
+      this.updateHash();
+      this.redraw();
+      this.drawBrush(true);
     }
 
     // 更新触点坐标
