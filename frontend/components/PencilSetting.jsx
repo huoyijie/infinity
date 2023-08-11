@@ -1,7 +1,6 @@
 import { useContext, useState } from 'react';
 import Button from './Button';
 import Pencil from './assets/Pencil';
-import Cancel from './assets/Cancel';
 import WBContext from './WBContext';
 import SettingContext from './SettingContext';
 
