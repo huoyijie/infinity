@@ -6,6 +6,6 @@ export default function () {
   const color = useContext(ColorContext);
   const opacity = useContext(OpacityContext);
   return (
-    <div className="w-6 h-6 rounded" style={{ backgroundColor: color, opacity: opacity + '%' }}></div>
+    <div className="w-5 h-5 rounded" style={{ backgroundColor: color, opacity: opacity + '%' }}></div>
   );
 }
