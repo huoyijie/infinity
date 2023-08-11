@@ -5,18 +5,23 @@ import HandRaised from './assets/HandRaised';
 import Question from './assets/Question';
 import ColorPicker from './ColorPicker';
 import PencilSetting from './PencilSetting';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import SettingContext from './SettingContext';
+import WBContext from './WBContext';
 
 export default function ({ mode, setMode }) {
   const [showColors, setShowColors] = useState(false);
   const [showOpacity, setShowOpacity] = useState(false);
   const [showPencilSetting, setShowPencilSetting] = useState(false);
+
   const resetAll = () => {
     setShowColors(false);
     setShowOpacity(false);
     setShowPencilSetting(false);
   };
+
+  const WB = useContext(WBContext);
+  WB.onClick = resetAll;
 
   return (
     <>

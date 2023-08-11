@@ -22,6 +22,7 @@ export default {
   // lazy brush 图层和上下文
   lbCanvas: null,
   lbCtx: null,
+  onClick: (e) => {},
 
   // 根据不同状态设置鼠标样式，如正在涂鸦或者移动画板
   mode: 'move',
@@ -106,6 +107,8 @@ export default {
     this.lbCanvas.addEventListener('touchmove', (e) => that.touchMove(e), false);
     this.lbCanvas.addEventListener('touchend', (e) => that.touchEnd(), false);
     this.lbCanvas.addEventListener('touchcancel', (e) => that.touchEnd(), false);
+
+    this.lbCanvas.addEventListener('click', this.onClick);
 
     // 建立 socket.io 连接
     this.socket = io(process.env.NEXT_PUBLIC_SOCKETIO_URL || 'ws://localhost:4000', {
