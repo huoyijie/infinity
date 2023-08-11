@@ -8,34 +8,34 @@ import Sun from './assets/Sun'
 import SettingContext from './SettingContext';
 import OpacityContext from './OpacityContext';
 
-function toRGB(color) {
-  switch (color) {
-    case 'black':
-      return '#000000';
-    case 'red':
-      return '#ff0000';
-    case 'blue':
-      return '#0000ff';
-    case 'yellow':
-      return '#ffff00';
-  }
-}
+const colors = [
+  // black
+  'rgb(0 0 0)',
+  // red
+  'rgb(220 38 38)',
+  // orange
+  'rgb(249 115 22)',
+  // yellow
+  'rgb(250 204 21)',
+  // green
+  'rgb(34 197 94)',
+  // sky
+  'rgb(56 189 248)',
+  // blue
+  'rgb(37 99 235)',
+  // purple
+  'rgb(168 85 247)',
+  // fuchsia
+  'rgb(232 121 249)',
+  // pink
+  'rgb(244 114 182)',
+];
 
 export default function ({ showColors, showOpacity }) {
   const WB = useContext(WBContext);
   const [selectedColor, setSelectedColor] = useState('black');
   const { opacity, setOpacity } = useContext(OpacityContext);
   const { setShowColors, setShowOpacity, resetAll } = useContext(SettingContext);
-
-  const colorClass = (color) => {
-    let c = 'inline-block w-10 h-10 rounded';
-    if (color === 'black') {
-      c += ' bg-black hover:bg-slate-500';
-    } else {
-      c += ` bg-[${toRGB(color)}] hover:bg-${color}-300`;
-    }
-    return c;
-  };
 
   // 点击颜色组件选色处理函数
   const selectColor = (color) => {
@@ -53,10 +53,9 @@ export default function ({ showColors, showOpacity }) {
         }} />
         {showColors && (
           <>
-            <div className={colorClass('black')} onClick={() => selectColor('black')}></div>
-            <div className={colorClass('red')} onClick={() => selectColor('red')}></div>
-            <div className={colorClass('blue')} onClick={() => selectColor('blue')}></div>
-            <div className={colorClass('yellow')} onClick={() => selectColor('yellow')}></div>
+            {colors.map((color) => (
+              <div className="inline-block w-10 h-10 rounded hover:opacity-25" style={{ backgroundColor: color }} onClick={() => selectColor(color)}></div>
+            ))}
             <div className="bg-slate-700 hover:bg-slate-300 hover:cursor-pointer active:bg-slate-500 w-10 h-10 rounded p-2 text-white" onClick={() => setShowColors(false)}>
               <Cancel />
             </div>
@@ -70,7 +69,7 @@ export default function ({ showColors, showOpacity }) {
         }} />
         {showOpacity && (
           <>
-            <div className={`rounded h-10 p-2 bg-[${toRGB(selectedColor)}]`} style={{ opacity: opacity + '%' }}>
+            <div className="rounded h-10 p-2" style={{ opacity: opacity + '%', backgroundColor: selectedColor }}>
               <input id="default-range" type="range" defaultValue={opacity} min={15} max={100} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
                 const { value } = e.target;
                 setOpacity(value);
