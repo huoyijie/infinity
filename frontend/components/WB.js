@@ -540,8 +540,8 @@ export default {
     const prevTouch0X = this.prevTouches[0].pageX;
     const prevTouch0Y = this.prevTouches[0].pageY;
 
-    // 一根手指绘制笔划
-    if (this.lazyBrush.update({ x: touch0X, y: touch0Y }) && this.singleTouch) {
+    // draw 涂鸦模式
+    if (this.lazyBrush.update({ x: touch0X, y: touch0Y }) && this.mode === 'draw' && this.singleTouch) {
       this.points.push(this.lazyBrush.getBrushCoordinates());
       if (this.points.length >= 3) {
         // 绘制笔划
@@ -574,7 +574,20 @@ export default {
       this.drawBrush();
     }
 
-    // 两根以上手指移动或伸缩画板
+    // move 移动模式
+    if (this.mode === 'move' && this.singleTouch) {
+      // 计算 2 个触点的中间点在 x, y 两轴方向的位移
+      const panX = touch0X - prevTouch0X;
+      const panY = touch0Y - prevTouch0Y;
+      // 累加此次移动带来的偏移量
+      this.offsetX += (panX / this.scale);
+      this.offsetY += (panY / this.scale);
+      this.updateHash();
+      // 移动画板过程中会不断重新绘制
+      this.redraw();
+    }
+
+    // 两根以上手指伸缩画板
     if (this.doubleTouch) {
       // 获取第 2 个触点坐标
       const touch1X = e.touches[1].pageX;
@@ -582,25 +595,17 @@ export default {
       const prevTouch1X = this.prevTouches[1].pageX;
       const prevTouch1Y = this.prevTouches[1].pageY;
 
+      // 获取 2 个触点中间坐标
+      const midX = (touch0X + touch1X) / 2;
+      const midY = (touch0Y + touch1Y) / 2;
+
       // 计算触点之间的距离
       const hypot = Math.sqrt(Math.pow((touch0X - touch1X), 2) + Math.pow((touch0Y - touch1Y), 2));
       const prevHypot = Math.sqrt(Math.pow((prevTouch0X - prevTouch1X), 2) + Math.pow((prevTouch0Y - prevTouch1Y), 2));
 
-      // 获取 2 个触点中间坐标
-      const midX = (touch0X + touch1X) / 2;
-      const midY = (touch0Y + touch1Y) / 2;
-      const prevMidX = (prevTouch0X + prevTouch1X) / 2;
-      const prevMidY = (prevTouch0Y + prevTouch1Y) / 2;
-
-      // 计算 2 个触点的中间点在 x, y 两轴方向的位移
-      const panX = midX - prevMidX;
-      const panY = midY - prevMidY;
-      // 累加此次移动带来的偏移量
-      this.offsetX += (panX / this.scale);
-      this.offsetY += (panY / this.scale);
-
+      const zoomAmount = hypot / prevHypot;
       // 计算屏幕伸缩量
-      const scaleAmount = this.thresholdingTouchScale(1 - hypot / prevHypot);
+      const scaleAmount = this.thresholdingTouchScale(1 - zoomAmount);
 
       // 计算 x, y 轴单位伸缩值
       const unitsZoomedX = this.logicWidth() * scaleAmount;
