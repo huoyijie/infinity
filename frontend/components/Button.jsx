@@ -1,5 +1,5 @@
 export default function Button({ Icon, selected, onClick }) {
   return (
-    <div className={`${selected ? 'bg-sky-950' : 'bg-sky-500'} hover:cursor-pointer w-10 h-10 rounded p-2 text-white`} onClick={onClick}><Icon /></div>
+    <div className={`${selected ? 'bg-slate-400' : 'bg-white'} text-black hover:cursor-pointer w-10 h-10 rounded border flex justify-center items-center`} onClick={onClick}><Icon /></div>
   );
 }
