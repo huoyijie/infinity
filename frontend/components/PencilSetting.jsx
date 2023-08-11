@@ -12,9 +12,9 @@ export default function ({ showPencilSetting }) {
 
   return (
     <div className="flex flex-row gap-1">
-      <Button Icon={Pencil} onClick={() => {
+      <Button Icon={Pencil} selected={showPencilSetting} onClick={() => {
         resetAll();
-        setShowPencilSetting(true);
+        setShowPencilSetting(!showPencilSetting);
       }} />
       {showPencilSetting && (
         <>
@@ -26,9 +26,6 @@ export default function ({ showPencilSetting }) {
             }} />
           </div>
           <div className="text-center p-2">{pencilSize}</div>
-          <div className="bg-slate-700 hover:bg-slate-300 hover:cursor-pointer active:bg-slate-500 w-10 h-10 rounded p-2 text-white" onClick={() => setShowPencilSetting(false)}>
-            <Cancel />
-          </div>
         </>
       )}
     </div>

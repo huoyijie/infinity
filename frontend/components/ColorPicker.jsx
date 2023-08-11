@@ -47,39 +47,31 @@ export default function ({ showColors, showOpacity }) {
   return (
     <ColorContext.Provider value={selectedColor}>
       <div className="flex flex-row gap-1">
-        <Button Icon={Color} onClick={() => {
+        <Button Icon={Color} selected={showColors} onClick={() => {
           resetAll();
-          setShowColors(true);
+          setShowColors(!showColors);
         }} />
         {showColors && (
-          <>
+          <div className="fixed left-16 grid grid-cols-5 gap-1 justify-items-center">
             {colors.map((color) => (
               <div className="inline-block w-10 h-10 rounded hover:opacity-25" style={{ backgroundColor: color }} onClick={() => selectColor(color)}></div>
             ))}
-            <div className="bg-slate-700 hover:bg-slate-300 hover:cursor-pointer active:bg-slate-500 w-10 h-10 rounded p-2 text-white" onClick={() => setShowColors(false)}>
-              <Cancel />
-            </div>
-          </>
+          </div>
         )}
       </div>
       <div className="flex flex-row gap-1">
-        <Button Icon={Sun} onClick={() => {
+        <Button Icon={Sun} selected={showOpacity} onClick={() => {
           resetAll();
-          setShowOpacity(true);
+          setShowOpacity(!showOpacity);
         }} />
         {showOpacity && (
-          <>
-            <div className="rounded h-10 p-2" style={{ opacity: opacity + '%', backgroundColor: selectedColor }}>
-              <input id="default-range" type="range" defaultValue={opacity} min={15} max={100} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
-                const { value } = e.target;
-                setOpacity(value);
-                WB.setOpacity(value);
-              }} />
-            </div>
-            <div className="bg-slate-700 hover:bg-slate-300 hover:cursor-pointer active:bg-slate-500 w-10 h-10 rounded p-2 text-white" onClick={() => setShowOpacity(false)}>
-              <Cancel />
-            </div>
-          </>
+          <div className="rounded h-10 p-2" style={{ opacity: opacity + '%', backgroundColor: selectedColor }}>
+            <input id="default-range" type="range" defaultValue={opacity} min={15} max={100} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
+              const { value } = e.target;
+              setOpacity(value);
+              WB.setOpacity(value);
+            }} />
+          </div>
         )}
       </div>
     </ColorContext.Provider>
