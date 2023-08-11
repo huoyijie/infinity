@@ -3,10 +3,10 @@ import Color from './assets/Color';
 import Button from './Button';
 import WBContext from './WBContext';
 import ColorContext from './ColorContext';
-import Cancel from './assets/Cancel';
 import Sun from './assets/Sun'
 import SettingContext from './SettingContext';
 import OpacityContext from './OpacityContext';
+import { HexColorPicker } from 'react-colorful';
 
 const colors = [
   // black
@@ -33,15 +33,19 @@ const colors = [
 
 export default function ({ showColors, showOpacity }) {
   const WB = useContext(WBContext);
-  const [selectedColor, setSelectedColor] = useState('black');
+  const [selectedColor, setSelectedColor] = useState('#000000');
   const { opacity, setOpacity } = useContext(OpacityContext);
   const { setShowColors, setShowOpacity, resetAll } = useContext(SettingContext);
 
+  // 设置颜色
+  const setColor = (color) => {
+    setSelectedColor(color);
+    WB.setColor(color);
+  };
   // 点击颜色组件选色处理函数
   const selectColor = (color) => {
-    setSelectedColor(color);
+    setColor(color);
     setShowColors(false);
-    WB.setColor(color);
   };
 
   return (
@@ -52,11 +56,16 @@ export default function ({ showColors, showOpacity }) {
           setShowColors(!showColors);
         }} />
         {showColors && (
-          <div className="fixed left-16 grid grid-cols-5 gap-1 justify-items-center">
-            {colors.map((color) => (
-              <div className="inline-block w-10 h-10 rounded hover:opacity-25" style={{ backgroundColor: color }} onClick={() => selectColor(color)}></div>
-            ))}
-          </div>
+          <>
+            <div className="fixed left-16 grid grid-cols-5 gap-1 justify-items-center">
+              {colors.map((color) => (
+                <div className="inline-block w-10 h-10 rounded hover:opacity-25" style={{ backgroundColor: color }} onClick={() => selectColor(color)}></div>
+              ))}
+            </div>
+            <div className="fixed left-72">
+              <HexColorPicker color={selectedColor} onChange={setColor} />
+            </div>
+          </>
         )}
       </div>
       <div className="flex flex-row gap-1">
