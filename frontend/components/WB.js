@@ -24,7 +24,7 @@ export default {
   lbCtx: null,
   onLoad: () => { },
   onClick: () => { },
-  onCanUndo: () => {},
+  onCanUndo: () => { },
 
   // 根据不同状态设置鼠标样式，如正在涂鸦或者移动画板
   mode: 'move',
@@ -41,6 +41,7 @@ export default {
   },
 
   // 所有绘画数据
+  strokes: [],
   drawings: new Map(),
   history: [],
 
@@ -149,6 +150,21 @@ export default {
     this.mode = mode;
   },
 
+  // 是否 erasor 模式
+  isEraser() {
+    return this.mode === 'eraser';
+  },
+
+  // 是否 draw || eraser 模式
+  isDrawOrEraserMode() {
+    return this.mode === 'draw' || this.isEraser();
+  },
+
+  // 设置 draft 图层不透明度
+  setDraftOpacity(opacity) {
+    this.draftCanvas.style.opacity = (opacity || this.pen.opacity) + '%';
+  },
+
   // 设置画笔颜色
   setColor(color) {
     this.pen.color = color;
@@ -225,7 +241,7 @@ export default {
 
   // 在最上面图层画 Brush
   drawBrush(clear) {
-    if (this.mode === 'draw') {
+    if (this.isDrawOrEraserMode()) {
       this.lbCtx.clearRect(0, 0, this.lbCanvas.width, this.lbCanvas.height);
       if (clear) return;
 
@@ -241,9 +257,9 @@ export default {
   },
 
   // 在中间 draft 图层画线段
-  drawLineOnDraft(pen, beginPoint, controlPoint, endPoint) {
+  drawLineOnDraft(pen, beginPoint, controlPoint, endPoint, isEraser) {
     this.draftCtx.beginPath();
-    this.draftCtx.strokeStyle = pen.color;
+    this.draftCtx.strokeStyle = isEraser ? 'white' : pen.color;
     this.draftCtx.lineWidth = pen.size;
     this.draftCtx.lineJoin = 'round';
     this.draftCtx.lineCap = 'round';
@@ -254,8 +270,8 @@ export default {
   },
 
   // 从中间 draft 图层拷贝到最下方画板图层
-  copyFromDraft(pen) {
-    this.ctx.globalAlpha = (pen || this.pen).opacity / 100;
+  copyFromDraft({ pen, isEraser }) {
+    this.ctx.globalAlpha = isEraser ? 1 : (pen || this.pen).opacity / 100;
     this.ctx.drawImage(this.draftCanvas, 0, 0);
     this.draftCtx.clearRect(0, 0, this.draftCanvas.width, this.draftCanvas.height);
   },
@@ -285,6 +301,9 @@ export default {
     if (!drawing.end) {
       // 保存绘画数据
       const stroke = this.drawings.get(drawing.strokeId) || [];
+      if (stroke.length === 0) {
+        this.strokes.push(drawing.strokeId);
+      }
       stroke.push(drawing);
       this.drawings.set(drawing.strokeId, stroke);
     } else {
@@ -300,7 +319,7 @@ export default {
           );
         }
         // 当前笔划结束后，拷贝 recv 图层到最下方画板图层
-        this.copyFromRecv(drawing.pen);
+        this.copyFromRecv(stroke[0].pen);
       }
     }
   },
@@ -310,6 +329,9 @@ export default {
     for (const drawing of drawings) {
       const { strokeId, color, opacity, size, beginPointX, beginPointY, ctrlPointX, ctrlPointY, endPointX, endPointY } = drawing;
       const stroke = this.drawings.get(strokeId) || [];
+      if (stroke.length === 0) {
+        this.strokes.push(strokeId);
+      }
       const pen = { color, opacity, size };
       const beginPoint = { x: beginPointX, y: beginPointY };
       const controlPoint = { x: ctrlPointX, y: ctrlPointY };
@@ -330,6 +352,7 @@ export default {
   // 收到远程撤销笔划
   onUndo(stroke) {
     this.drawings.delete(stroke.id);
+    this.strokes = this.strokes.filter((strokeId) => strokeId !== stroke.id);
     this.redraw();
   },
 
@@ -349,7 +372,8 @@ export default {
     // 清空画板图层
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     // 所有笔划存储在 drawings 中
-    for (const [_, stroke] of this.drawings) {
+    for (const strokeId of this.strokes) {
+      const stroke = this.drawings.get(strokeId);
       // 在 draft 图层上绘制笔划
       for (const drawing of stroke) {
         this.drawLineOnDraft(
@@ -360,7 +384,7 @@ export default {
         );
       }
       // 拷贝到最下方画板图层
-      this.copyFromDraft(stroke[0].pen);
+      this.copyFromDraft({ pen: stroke[0].pen });
     }
   },
 
@@ -421,7 +445,10 @@ export default {
     // 是否按下鼠标左键
     this.leftMouseDown = e.button === 0;
     if (this.leftMouseDown) {
-      if (this.mode === 'draw') {
+      if (this.isDrawOrEraserMode()) {
+        if (this.isEraser()) {
+          this.setDraftOpacity(100);
+        }
         this.beginPoint = this.lazyBrush.getBrushCoordinates();
         this.points.push(this.beginPoint);
         this.currentStroke = newStrokeId();
@@ -441,7 +468,7 @@ export default {
     const cursorY = e.pageY;
 
     // draw 涂鸦模式
-    if (this.lazyBrush.update({ x: e.pageX, y: e.pageY }) && this.mode === 'draw' && this.leftMouseDown) {
+    if (this.lazyBrush.update({ x: e.pageX, y: e.pageY }) && this.isDrawOrEraserMode() && this.leftMouseDown) {
       this.points.push(this.lazyBrush.getBrushCoordinates());
       if (this.points.length >= 3) {
         // 绘制笔划
@@ -451,11 +478,12 @@ export default {
           x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
           y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
         }
-        this.drawLineOnDraft(this.toPen(), this.beginPoint, controlPoint, endPoint);
+        this.drawLineOnDraft(this.toPen(), this.beginPoint, controlPoint, endPoint, this.isEraser());
 
+        const { color, opacity, size } = this.pen;
         const drawing = {
           strokeId: this.currentStroke,
-          pen: { ...this.pen },
+          pen: { color: this.isEraser() ? 'white' : color, opacity: this.isEraser() ? 100 : opacity, size },
           beginPoint: this.toLogicPoint(this.beginPoint),
           controlPoint: this.toLogicPoint(controlPoint),
           endPoint: this.toLogicPoint(endPoint),
@@ -464,6 +492,7 @@ export default {
         const stroke = this.drawings.get(drawing.strokeId) || [];
         // 记录笔划 history
         if (stroke.length === 0) {
+          this.strokes.push(drawing.strokeId);
           this.history.push(drawing.strokeId);
           this.onCanUndo(true);
         }
@@ -496,14 +525,16 @@ export default {
 
   mouseUp() {
     if (this.leftMouseDown) {
-      if (this.mode === 'draw') {
+      if (this.isDrawOrEraserMode()) {
         // 发送笔划结束，不包含画笔和数据
         this.socket.emit('drawing', {
           strokeId: this.currentStroke,
           end: true,
-          pen: { ...this.pen },
         });
-        this.copyFromDraft();
+        this.copyFromDraft({ isEraser: this.isEraser() });
+        if (this.isEraser()) {
+          this.setDraftOpacity();
+        }
         this.currentStroke = null;
         this.beginPoint = null;
         this.points = [];
@@ -547,11 +578,13 @@ export default {
     // 只记录 2 个触点坐标
     this.prevTouches[0] = e.touches[0];
     this.prevTouches[1] = e.touches[1];
-    if (this.singleTouch) {
-      this.lazyBrush.update({ x: e.touches[0].pageX, y: e.touches[0].pageY });
-      this.currentStroke = newStrokeId();
+    if (this.singleTouch && this.isDrawOrEraserMode()) {
+      if (this.isEraser()) {
+        this.setDraftOpacity(100);
+      }
       this.beginPoint = this.lazyBrush.getBrushCoordinates();
       this.points.push(this.beginPoint);
+      this.currentStroke = newStrokeId();
     }
   },
 
@@ -563,7 +596,7 @@ export default {
     const prevTouch0Y = this.prevTouches[0].pageY;
 
     // draw 涂鸦模式
-    if (this.lazyBrush.update({ x: touch0X, y: touch0Y }) && this.mode === 'draw' && this.singleTouch) {
+    if (this.lazyBrush.update({ x: touch0X, y: touch0Y }) && this.isDrawOrEraserMode() && this.singleTouch) {
       this.points.push(this.lazyBrush.getBrushCoordinates());
       if (this.points.length >= 3) {
         // 绘制笔划
@@ -573,11 +606,12 @@ export default {
           x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
           y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
         }
-        this.drawLineOnDraft(this.toPen(), this.beginPoint, controlPoint, endPoint);
+        this.drawLineOnDraft(this.toPen(), this.beginPoint, controlPoint, endPoint, this.isEraser());
 
+        const { color, opacity, size } = this.pen;
         const drawing = {
           strokeId: this.currentStroke,
-          pen: { ...this.pen },
+          pen: { color: this.isEraser() ? 'white' : color, opacity: this.isEraser() ? 100 : opacity, size },
           beginPoint: this.toLogicPoint(this.beginPoint),
           controlPoint: this.toLogicPoint(controlPoint),
           endPoint: this.toLogicPoint(endPoint),
@@ -587,6 +621,7 @@ export default {
         const stroke = this.drawings.get(drawing.strokeId) || [];
         // 记录笔划 history
         if (stroke.length === 0) {
+          this.strokes.push(drawing.strokeId);
           this.history.push(drawing.strokeId);
           this.onCanUndo(true);
         }
@@ -666,9 +701,11 @@ export default {
       this.socket.emit('drawing', {
         strokeId: this.currentStroke,
         end: true,
-        pen: { ...this.pen },
       });
-      this.copyFromDraft();
+      this.copyFromDraft({ isEraser: this.isEraser() });
+      if (this.isEraser()) {
+        this.setDraftOpacity();
+      }
       this.singleTouch = false;
       this.currentStroke = null;
       this.beginPoint = null;
@@ -688,6 +725,7 @@ export default {
         this.onCanUndo(false);
       }
       this.drawings.delete(lastStroke);
+      this.strokes = this.strokes.filter((strokeId) => strokeId !== lastStroke);
       // 发送服务器，撤销此笔划
       this.socket.emit('undo', {
         id: lastStroke
