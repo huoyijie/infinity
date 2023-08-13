@@ -1,5 +1,9 @@
-export default function Button({ Icon, selected, onClick }) {
+export default function Button({ Icon, selected, onClick, disabled }) {
+  const className = () => {
+    return `${selected ? 'bg-slate-400' : 'bg-white'} ${disabled ? 'text-slate-400' : 'active:bg-slate-600 hover:cursor-pointer'} w-10 h-10 rounded border flex justify-center items-center`;
+  };
+
   return (
-    <div className={`${selected ? 'bg-slate-400' : 'bg-white'} text-black hover:cursor-pointer active:bg-slate-600 w-10 h-10 rounded border flex justify-center items-center`} onClick={onClick}><Icon /></div>
+    <button className={className()} onClick={onClick} disabled={disabled}><Icon /></button>
   );
 }

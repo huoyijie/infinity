@@ -22,8 +22,9 @@ export default {
   // lazy brush 图层和上下文
   lbCanvas: null,
   lbCtx: null,
-  onClick: () => { },
   onLoad: () => { },
+  onClick: () => { },
+  onCanUndo: () => {},
 
   // 根据不同状态设置鼠标样式，如正在涂鸦或者移动画板
   mode: 'move',
@@ -464,6 +465,7 @@ export default {
         // 记录笔划 history
         if (stroke.length === 0) {
           this.history.push(drawing.strokeId);
+          this.onCanUndo(true);
         }
         stroke.push(drawing);
         this.drawings.set(drawing.strokeId, stroke);
@@ -586,6 +588,7 @@ export default {
         // 记录笔划 history
         if (stroke.length === 0) {
           this.history.push(drawing.strokeId);
+          this.onCanUndo(true);
         }
         stroke.push(drawing);
         this.drawings.set(drawing.strokeId, stroke);
@@ -681,6 +684,9 @@ export default {
   undo() {
     const lastStroke = this.history.pop();
     if (lastStroke) {
+      if (this.history.length === 0) {
+        this.onCanUndo(false);
+      }
       this.drawings.delete(lastStroke);
       // 发送服务器，撤销此笔划
       this.socket.emit('undo', {

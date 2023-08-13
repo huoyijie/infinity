@@ -14,6 +14,7 @@ export default function ({ mode, setMode }) {
   const [showColors, setShowColors] = useState(false);
   const [showOpacity, setShowOpacity] = useState(false);
   const [showPencilSetting, setShowPencilSetting] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
 
   const resetAll = () => {
     setShowColors(false);
@@ -28,6 +29,7 @@ export default function ({ mode, setMode }) {
 
   const WB = useContext(WBContext);
   WB.onClick = () => resetAll();
+  WB.onCanUndo = (canUndo) => setCanUndo(canUndo);
 
   return (
     <>
@@ -37,7 +39,7 @@ export default function ({ mode, setMode }) {
           <Button Icon={PencilSquare} selected={mode === 'draw'} onClick={() => onSetMode('draw')} />
           <Button Icon={Trash} selected={mode === 'eraser'} onClick={() => onSetMode('eraser')} />
           <Button Icon={HandRaised} selected={mode === 'move'} onClick={() => onSetMode('move')} />
-          <Button Icon={Undo} onClick={() => WB.undo()} />
+          <Button Icon={Undo} disabled={!(mode === 'draw' && canUndo)} onClick={() => setTimeout(() => WB.undo(), 10)} />
           <ColorPicker showColors={showColors} showOpacity={showOpacity} />
           <PencilSetting showPencilSetting={showPencilSetting} />
           <Button Icon={Question} />
