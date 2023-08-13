@@ -37,7 +37,7 @@ export default function ({ mode, setMode }) {
           <Button Icon={PencilSquare} selected={mode === 'draw'} onClick={() => onSetMode('draw')} />
           <Button Icon={Trash} selected={mode === 'eraser'} onClick={() => onSetMode('eraser')} />
           <Button Icon={HandRaised} selected={mode === 'move'} onClick={() => onSetMode('move')} />
-          <Button Icon={Undo} />
+          <Button Icon={Undo} onClick={() => WB.undo()} />
           <ColorPicker showColors={showColors} showOpacity={showOpacity} />
           <PencilSetting showPencilSetting={showPencilSetting} />
           <Button Icon={Question} />

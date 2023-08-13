@@ -10,20 +10,40 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 var taskNum = 0;
 var drawings = [];
+var undos = [];
 setInterval(async () => {
   // 最多同时存在 5 个写数据库任务，最多占据 5 个数据库连接
-  if (taskNum < 5 && drawings.length > 0) {
-    taskNum++;
-    // 获取缓存数据
-    const data = drawings;
-    // 必须先清空缓存
-    drawings = [];
-    // 异步写入数据库
-    await prisma.drawing.createMany({
-      data,
-      skipDuplicates: true,
-    });
-    taskNum--;
+  if (taskNum < 5) {
+    if (undos.length > 0) {
+      // 如果在队列中，则从队列中删除
+      drawings = drawings.filter((drawing) => !undos.includes(drawing.strokeId));
+      // 从数据库删除
+      taskNum++;
+      const strokeIds = undos;
+      // 必须先清空缓存
+      undos = [];
+      await prisma.drawing.deleteMany({
+        where: {
+          strokeId: {
+            in: strokeIds
+          }
+        }
+      });
+      taskNum--;
+    }
+
+    if (drawings.length > 0) {
+      taskNum++;
+      const data = drawings;
+      // 必须先清空缓存
+      drawings = [];
+      // 异步写入数据库
+      await prisma.drawing.createMany({
+        data,
+        skipDuplicates: true,
+      });
+      taskNum--;
+    }
   }
 }, 10);
 
@@ -42,10 +62,17 @@ const io = new Server(httpServer, {
 // 新客户端连接
 io.on('connection', async (socket) => {
   console.log(socket.id, 'connected');
-  // 收到客户端新笔划请求
+
+  // 客户端打开画板后，立刻推送所有涂鸦数据
+  socket.emit('drawings', await prisma.drawing.findMany({
+    orderBy: [{ id: 'asc' }],
+  }));
+
+  // 收到新笔划
   socket.on('drawing', (drawing) => {
     // 广播给其他客户端
     socket.broadcast.emit('drawing', drawing);
+    // 写入队列，然后异步写入数据库
     if (!drawing.end) {
       const { strokeId, pen, beginPoint, controlPoint, endPoint } = drawing;
       const { color, opacity, size } = pen;
@@ -63,16 +90,19 @@ io.on('connection', async (socket) => {
       });
     }
   });
+
+  // 撤销笔划
+  socket.on('undo', (stroke) => {
+    // 广播给其他客户端
+    socket.broadcast.emit('undo', stroke);
+    // 放入撤销队列
+    undos.push(stroke.id);
+  });
+
+  // 连接断开
   socket.on('disconnect', () => {
     console.log(socket.id, 'disconnect');
   });
-  socket.emit('drawings', await prisma.drawing.findMany({
-    orderBy: [
-      {
-        id: 'asc',
-      },
-    ],
-  }));
 });
 
 // 启动服务器

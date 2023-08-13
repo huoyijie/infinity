@@ -41,6 +41,7 @@ export default {
 
   // 所有绘画数据
   drawings: new Map(),
+  history: [],
 
   // 画板移动偏移量
   offsetX: 0,
@@ -116,11 +117,14 @@ export default {
     this.socket = io(process.env.NEXT_PUBLIC_SOCKETIO_URL || 'ws://localhost:4000', {
       parser: msgpackParser,
     });
+    this.socket.on('drawings', (drawings) => {
+      that.onRecvDrawings(drawings);
+    });
     this.socket.on('drawing', (drawing) => {
       that.onRecvDrawing(drawing);
     })
-    this.socket.on('drawings', (drawings) => {
-      that.onRecvDrawings(drawings);
+    this.socket.on('undo', (stroke) => {
+      that.onUndo(stroke);
     });
 
     // window resize, redraw
@@ -322,6 +326,12 @@ export default {
     this.onLoad();
   },
 
+  // 收到远程撤销笔划
+  onUndo(stroke) {
+    this.drawings.delete(stroke.id);
+    this.redraw();
+  },
+
   // 每当移动画板、放大缩小画板、resize 窗口大小都需要重新绘制画板
   redraw() {
     // 设置画板长和宽为窗口大小
@@ -451,6 +461,10 @@ export default {
         };
         // 保存笔划
         const stroke = this.drawings.get(drawing.strokeId) || [];
+        // 记录笔划 history
+        if (stroke.length === 0) {
+          this.history.push(drawing.strokeId);
+        }
         stroke.push(drawing);
         this.drawings.set(drawing.strokeId, stroke);
         // 把当前笔划发送到服务器
@@ -569,6 +583,10 @@ export default {
 
         // 保存笔划
         const stroke = this.drawings.get(drawing.strokeId) || [];
+        // 记录笔划 history
+        if (stroke.length === 0) {
+          this.history.push(drawing.strokeId);
+        }
         stroke.push(drawing);
         this.drawings.set(drawing.strokeId, stroke);
         // 把当前笔划发送到服务器
@@ -656,6 +674,19 @@ export default {
       this.updateHash();
       this.doubleTouch = false;
     }
-  }
+  },
   /* 触屏事件处理结束 */
+
+  // 撤销最后一次笔划
+  undo() {
+    const lastStroke = this.history.pop();
+    if (lastStroke) {
+      this.drawings.delete(lastStroke);
+      // 发送服务器，撤销此笔划
+      this.socket.emit('undo', {
+        id: lastStroke
+      });
+      this.redraw();
+    }
+  }
 };
