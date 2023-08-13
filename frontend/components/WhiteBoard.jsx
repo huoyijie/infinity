@@ -3,6 +3,7 @@ import WB from './WB';
 import Toolbar from './Toolbar';
 import WBContext from './WBContext';
 import OpacityContext from './OpacityContext';
+import Spinner from './Spinner';
 
 function WhiteBoard() {
   const canvasRef = useRef(null);
@@ -12,10 +13,13 @@ function WhiteBoard() {
   const [mode, setMode] = useState('move');
   const [cursor, setCursor] = useState(null);
   const [opacity, setOpacity] = useState(100);
+  const [loading, setLoading] = useState(true);
 
   // 启动 socket 连接，初始化共享画板组件
   useEffect(() => {
-    WB.init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, mode, setCursor);
+    WB.init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, mode, setCursor, () => {
+      setLoading(false);
+    });
     return () => WB.close();
   }, []);
 
@@ -29,6 +33,7 @@ function WhiteBoard() {
 
   return (
     <>
+      {loading && <Spinner />}
       <canvas ref={lbCanvasRef} id="lazyBrushCanvas" className={lbCanvasClass()}></canvas>
       {/* 画板 */}
       <canvas ref={draftCanvasRef} id="draftCanvas" className="fixed z-30 w-full h-full" style={{ opacity: opacity + '%' }}></canvas>

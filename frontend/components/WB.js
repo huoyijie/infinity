@@ -22,7 +22,8 @@ export default {
   // lazy brush 图层和上下文
   lbCanvas: null,
   lbCtx: null,
-  onClick: (e) => {},
+  onClick: () => { },
+  onLoad: () => { },
 
   // 根据不同状态设置鼠标样式，如正在涂鸦或者移动画板
   mode: 'move',
@@ -71,7 +72,7 @@ export default {
   }),
 
   // 初始化画板
-  init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, mode, setCursor) {
+  init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, mode, setCursor, onLoad) {
     const that = this;
     // 获取画板元素及上下文对象
     this.canvas = canvasRef.current;
@@ -86,6 +87,7 @@ export default {
     // 当画板上进入不同状态时可通过此函数变换鼠标样式
     this.mode = mode;
     this.setCursor = setCursor;
+    this.onLoad = onLoad;
     // 从 URL hash 中解析三维坐标
     this.parseHash();
 
@@ -317,6 +319,7 @@ export default {
       this.drawings.set(strokeId, stroke);
     }
     this.redraw();
+    this.onLoad();
   },
 
   // 每当移动画板、放大缩小画板、resize 窗口大小都需要重新绘制画板
@@ -613,7 +616,7 @@ export default {
       // 计算 x, y 轴单位伸缩值
       const unitsZoomedX = this.logicWidth() * scaleAmount;
       const unitsZoomedY = this.logicHeight() * scaleAmount;
-      
+
       // 以移动后的当前 2 个触点的中间点为中心进行伸缩
       const zoomRatioX = midX / this.canvas.width;
       const zoomRatioY = midY / this.canvas.height;
