@@ -59,7 +59,7 @@ export default function ({ showColors, showOpacity }) {
           <>
             <div className="fixed left-16 grid grid-cols-5 gap-1 justify-items-center">
               {colors.map((color) => (
-                <div className="inline-block w-10 h-10 rounded hover:opacity-25" style={{ backgroundColor: color }} onClick={() => selectColor(color)}></div>
+                <div key={color} className="inline-block w-10 h-10 rounded hover:opacity-25" style={{ backgroundColor: color }} onClick={() => selectColor(color)}></div>
               ))}
             </div>
             <div className="fixed left-16 top-72 -translate-y-6">
