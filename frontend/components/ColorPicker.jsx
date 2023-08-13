@@ -50,7 +50,7 @@ export default function ({ showColors, showOpacity }) {
 
   return (
     <ColorContext.Provider value={selectedColor}>
-      <div className="flex flex-row gap-1">
+      <div className="flex flex-row">
         <Button Icon={Color} selected={showColors} onClick={() => {
           resetAll();
           setShowColors(!showColors);
@@ -68,13 +68,13 @@ export default function ({ showColors, showOpacity }) {
           </>
         )}
       </div>
-      <div className="flex flex-row gap-1">
+      <div className="flex flex-row">
         <Button Icon={Sun} selected={showOpacity} onClick={() => {
           resetAll();
           setShowOpacity(!showOpacity);
         }} />
         {showOpacity && (
-          <div className="rounded h-10 p-2" style={{ opacity: opacity + '%', backgroundColor: selectedColor }}>
+          <div className="fixed left-16 rounded h-10 p-2" style={{ opacity: opacity + '%', backgroundColor: selectedColor }}>
             <input id="default-range" type="range" defaultValue={opacity} min={15} max={100} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
               const { value } = e.target;
               setOpacity(value);
