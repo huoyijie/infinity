@@ -117,8 +117,6 @@ export default {
     this.lbCanvas.addEventListener('touchend', (e) => that.touchEnd(), false);
     this.lbCanvas.addEventListener('touchcancel', (e) => that.touchEnd(), false);
 
-    this.lbCanvas.addEventListener('click', this.onClick);
-
     // 建立 socket.io 连接
     this.socket = io(process.env.NEXT_PUBLIC_SOCKETIO_URL || 'ws://localhost:4000', {
       parser: msgpackParser,
@@ -461,6 +459,7 @@ export default {
 
   /* 鼠标事件处理开始 */
   mouseDown(e) {
+    this.onClick();
     // 是否按下鼠标左键
     this.leftMouseDown = e.button === 0;
     if (this.leftMouseDown) {
@@ -567,6 +566,7 @@ export default {
   },
 
   mouseWheel(e) {
+    this.onClick();
     const scaleAmount = this.thresholdingWheelScale(-e.deltaY / 4800);
 
     // 基于鼠标箭头位置决定怎样伸缩
@@ -590,6 +590,7 @@ export default {
   /* 鼠标事件处理结束 */
   /* 触屏事件处理开始 */
   touchStart(e) {
+    this.onClick();
     // 检测到一个触屏点为单手指
     this.singleTouch = e.touches.length == 1;
     // 多于 2 个触点等同于 2 个，双手指
