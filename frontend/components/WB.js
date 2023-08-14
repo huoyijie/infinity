@@ -582,6 +582,7 @@ export default {
       if (this.isErase()) {
         this.setDraftOpacity(100);
       }
+      this.lazyBrush.update({ x: e.touches[0].pageX, y: e.touches[0].pageY });
       this.beginPoint = this.lazyBrush.getBrushCoordinates();
       this.points.push(this.beginPoint);
       this.currentStroke = newStrokeId();
