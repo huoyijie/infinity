@@ -41,9 +41,9 @@ export default {
   },
 
   // 所有绘画数据
-  strokes: [],
-  drawings: new Map(),
-  history: [],
+  strokes: null,
+  drawings: null,
+  history: null,
 
   // 画板移动偏移量
   offsetX: 0,
@@ -87,6 +87,10 @@ export default {
     this.lbCanvas = lbCanvasRef.current;
     this.lbCtx = this.lbCanvas.getContext('2d');
 
+    // 初始化数据
+    this.drawings = new Map();
+    this.strokes = [];
+    this.history = [];
     // 当画板上进入不同状态时可通过此函数变换鼠标样式
     this.mode = mode;
     this.onLoad = onLoad;
