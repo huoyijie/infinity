@@ -47,7 +47,7 @@ I would suggest the following approach and attach a proof-of-concept demo at the
 * hash, x,y,scale
 * scale: [0.1, 10]
 
-## 实时显示远程 peer 坐标和颜色等，实时显示远程 peer 笔划过程，现在粒度比较粗，一个笔划是同时显示出来，没有过程。
+## 判断逻辑点是否在可视窗口范围内，每次 redraw 只画可视范围内的笔划
 
 ## 重构代码
 

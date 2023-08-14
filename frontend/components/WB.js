@@ -378,17 +378,21 @@ export default {
     // 所有笔划存储在 drawings 中
     for (const strokeId of this.strokes) {
       const stroke = this.drawings.get(strokeId);
+      let drawn = false;
       // 在 draft 图层上绘制笔划
-      for (const drawing of stroke) {
-        this.drawLineOnDraft(
-          this.toPen(drawing.pen),
-          this.toPoint(drawing.beginPoint),
-          this.toPoint(drawing.controlPoint),
-          this.toPoint(drawing.endPoint),
-        );
+      for (const { pen, beginPoint, controlPoint, endPoint } of stroke) {
+        if (this.isLogicPointVisible(beginPoint) && this.isLogicPointVisible(controlPoint) && this.isLogicPointVisible(endPoint)) {
+          this.drawLineOnDraft(
+            this.toPen(pen),
+            this.toPoint(beginPoint),
+            this.toPoint(controlPoint),
+            this.toPoint(endPoint),
+          );
+          drawn = true;
+        }
       }
       // 拷贝到最下方画板图层
-      this.copyFromDraft({ pen: stroke[0].pen });
+      drawn && this.copyFromDraft({ pen: stroke[0].pen });
     }
   },
 
@@ -441,6 +445,12 @@ export default {
   // 逻辑画板宽度
   logicWidth() {
     return this.canvas.width / this.scale;
+  },
+
+  // 逻辑点是否在可视窗口范围内
+  isLogicPointVisible(point) {
+    const { x, y } = this.toPoint(point);
+    return x >= 0 && x <= this.canvas.width && y >= 0 && y <= this.canvas.height;
   },
   /* 坐标转换函数结束 */
 
