@@ -150,14 +150,14 @@ export default {
     this.mode = mode;
   },
 
-  // 是否 erasor 模式
-  isEraser() {
-    return this.mode === 'eraser';
+  // 是否 erase 模式
+  isErase() {
+    return this.mode === 'erase';
   },
 
-  // 是否 draw || eraser 模式
-  isDrawOrEraserMode() {
-    return this.mode === 'draw' || this.isEraser();
+  // 是否 draw || erase 模式
+  isDrawOrEraseMode() {
+    return this.mode === 'draw' || this.isErase();
   },
 
   // 设置 draft 图层不透明度
@@ -241,7 +241,7 @@ export default {
 
   // 在最上面图层画 Brush
   drawBrush(clear) {
-    if (this.isDrawOrEraserMode()) {
+    if (this.isDrawOrEraseMode()) {
       this.lbCtx.clearRect(0, 0, this.lbCanvas.width, this.lbCanvas.height);
       if (clear) return;
 
@@ -257,9 +257,9 @@ export default {
   },
 
   // 在中间 draft 图层画线段
-  drawLineOnDraft(pen, beginPoint, controlPoint, endPoint, isEraser) {
+  drawLineOnDraft(pen, beginPoint, controlPoint, endPoint, isErase) {
     this.draftCtx.beginPath();
-    this.draftCtx.strokeStyle = isEraser ? 'white' : pen.color;
+    this.draftCtx.strokeStyle = isErase ? 'white' : pen.color;
     this.draftCtx.lineWidth = pen.size;
     this.draftCtx.lineJoin = 'round';
     this.draftCtx.lineCap = 'round';
@@ -270,8 +270,8 @@ export default {
   },
 
   // 从中间 draft 图层拷贝到最下方画板图层
-  copyFromDraft({ pen, isEraser }) {
-    this.ctx.globalAlpha = isEraser ? 1 : (pen || this.pen).opacity / 100;
+  copyFromDraft({ pen, isErase }) {
+    this.ctx.globalAlpha = isErase ? 1 : (pen || this.pen).opacity / 100;
     this.ctx.drawImage(this.draftCanvas, 0, 0);
     this.draftCtx.clearRect(0, 0, this.draftCanvas.width, this.draftCanvas.height);
   },
@@ -445,8 +445,8 @@ export default {
     // 是否按下鼠标左键
     this.leftMouseDown = e.button === 0;
     if (this.leftMouseDown) {
-      if (this.isDrawOrEraserMode()) {
-        if (this.isEraser()) {
+      if (this.isDrawOrEraseMode()) {
+        if (this.isErase()) {
           this.setDraftOpacity(100);
         }
         this.beginPoint = this.lazyBrush.getBrushCoordinates();
@@ -468,7 +468,7 @@ export default {
     const cursorY = e.pageY;
 
     // draw 涂鸦模式
-    if (this.lazyBrush.update({ x: e.pageX, y: e.pageY }) && this.isDrawOrEraserMode() && this.leftMouseDown) {
+    if (this.lazyBrush.update({ x: e.pageX, y: e.pageY }) && this.isDrawOrEraseMode() && this.leftMouseDown) {
       this.points.push(this.lazyBrush.getBrushCoordinates());
       if (this.points.length >= 3) {
         // 绘制笔划
@@ -478,12 +478,12 @@ export default {
           x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
           y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
         }
-        this.drawLineOnDraft(this.toPen(), this.beginPoint, controlPoint, endPoint, this.isEraser());
+        this.drawLineOnDraft(this.toPen(), this.beginPoint, controlPoint, endPoint, this.isErase());
 
         const { color, opacity, size } = this.pen;
         const drawing = {
           strokeId: this.currentStroke,
-          pen: { color: this.isEraser() ? 'white' : color, opacity: this.isEraser() ? 100 : opacity, size },
+          pen: { color: this.isErase() ? 'white' : color, opacity: this.isErase() ? 100 : opacity, size },
           beginPoint: this.toLogicPoint(this.beginPoint),
           controlPoint: this.toLogicPoint(controlPoint),
           endPoint: this.toLogicPoint(endPoint),
@@ -525,14 +525,14 @@ export default {
 
   mouseUp() {
     if (this.leftMouseDown) {
-      if (this.isDrawOrEraserMode()) {
+      if (this.isDrawOrEraseMode()) {
         // 发送笔划结束，不包含画笔和数据
         this.socket.emit('drawing', {
           strokeId: this.currentStroke,
           end: true,
         });
-        this.copyFromDraft({ isEraser: this.isEraser() });
-        if (this.isEraser()) {
+        this.copyFromDraft({ isErase: this.isErase() });
+        if (this.isErase()) {
           this.setDraftOpacity();
         }
         this.currentStroke = null;
@@ -578,8 +578,8 @@ export default {
     // 只记录 2 个触点坐标
     this.prevTouches[0] = e.touches[0];
     this.prevTouches[1] = e.touches[1];
-    if (this.singleTouch && this.isDrawOrEraserMode()) {
-      if (this.isEraser()) {
+    if (this.singleTouch && this.isDrawOrEraseMode()) {
+      if (this.isErase()) {
         this.setDraftOpacity(100);
       }
       this.beginPoint = this.lazyBrush.getBrushCoordinates();
@@ -596,7 +596,7 @@ export default {
     const prevTouch0Y = this.prevTouches[0].pageY;
 
     // draw 涂鸦模式
-    if (this.lazyBrush.update({ x: touch0X, y: touch0Y }) && this.isDrawOrEraserMode() && this.singleTouch) {
+    if (this.lazyBrush.update({ x: touch0X, y: touch0Y }) && this.isDrawOrEraseMode() && this.singleTouch) {
       this.points.push(this.lazyBrush.getBrushCoordinates());
       if (this.points.length >= 3) {
         // 绘制笔划
@@ -606,12 +606,12 @@ export default {
           x: (lastTwoPoints[0].x + lastTwoPoints[1].x) / 2,
           y: (lastTwoPoints[0].y + lastTwoPoints[1].y) / 2,
         }
-        this.drawLineOnDraft(this.toPen(), this.beginPoint, controlPoint, endPoint, this.isEraser());
+        this.drawLineOnDraft(this.toPen(), this.beginPoint, controlPoint, endPoint, this.isErase());
 
         const { color, opacity, size } = this.pen;
         const drawing = {
           strokeId: this.currentStroke,
-          pen: { color: this.isEraser() ? 'white' : color, opacity: this.isEraser() ? 100 : opacity, size },
+          pen: { color: this.isErase() ? 'white' : color, opacity: this.isErase() ? 100 : opacity, size },
           beginPoint: this.toLogicPoint(this.beginPoint),
           controlPoint: this.toLogicPoint(controlPoint),
           endPoint: this.toLogicPoint(endPoint),
@@ -702,8 +702,8 @@ export default {
         strokeId: this.currentStroke,
         end: true,
       });
-      this.copyFromDraft({ isEraser: this.isEraser() });
-      if (this.isEraser()) {
+      this.copyFromDraft({ isErase: this.isErase() });
+      if (this.isErase()) {
         this.setDraftOpacity();
       }
       this.singleTouch = false;
