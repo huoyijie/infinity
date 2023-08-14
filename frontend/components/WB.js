@@ -23,12 +23,12 @@ export default {
   lbCanvas: null,
   lbCtx: null,
   onLoad: () => { },
+  onCursor: () => { },
   onClick: () => { },
   onCanUndo: () => { },
 
   // 根据不同状态设置鼠标样式，如正在涂鸦或者移动画板
   mode: 'move',
-  setCursor: null,
 
   // 画笔
   pen: {
@@ -75,7 +75,7 @@ export default {
   }),
 
   // 初始化画板
-  init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, mode, setCursor, onLoad) {
+  init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, mode, onLoad, onCursor) {
     const that = this;
     // 获取画板元素及上下文对象
     this.canvas = canvasRef.current;
@@ -89,8 +89,8 @@ export default {
 
     // 当画板上进入不同状态时可通过此函数变换鼠标样式
     this.mode = mode;
-    this.setCursor = setCursor;
     this.onLoad = onLoad;
+    this.onCursor = onCursor;
     // 从 URL hash 中解析三维坐标
     this.parseHash();
 
@@ -452,9 +452,9 @@ export default {
         this.beginPoint = this.lazyBrush.getBrushCoordinates();
         this.points.push(this.beginPoint);
         this.currentStroke = newStrokeId();
-        this.setCursor('crosshair');
+        this.onCursor('crosshair');
       } else if (this.mode === 'move') {
-        this.setCursor('move');
+        this.onCursor('move');
       }
     }
     // 更新鼠标移动前坐标
@@ -544,7 +544,7 @@ export default {
       this.leftMouseDown = false;
     }
     // 恢复默认鼠标样式
-    this.setCursor(null);
+    this.onCursor(null);
   },
 
   mouseWheel(e) {

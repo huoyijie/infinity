@@ -17,9 +17,7 @@ function WhiteBoard() {
 
   // 启动 socket 连接，初始化共享画板组件
   useEffect(() => {
-    WB.init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, mode, setCursor, () => {
-      setLoading(false);
-    });
+    WB.init(canvasRef, recvCanvasRef, draftCanvasRef, lbCanvasRef, mode, () => setLoading(false), (cursor) => setCursor(cursor));
     return () => WB.close();
   }, []);
 
