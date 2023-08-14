@@ -6,7 +6,7 @@ module.exports = {
   ],
   safelist: [
     {
-      pattern: /cursor-(crosshair|move)/,
+      pattern: /cursor-(move|none)/,
     }
   ],
   theme: {

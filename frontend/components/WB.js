@@ -452,7 +452,7 @@ export default {
         this.beginPoint = this.lazyBrush.getBrushCoordinates();
         this.points.push(this.beginPoint);
         this.currentStroke = newStrokeId();
-        this.onCursor('crosshair');
+        this.onCursor('none');
       } else if (this.mode === 'move') {
         this.onCursor('move');
       }
