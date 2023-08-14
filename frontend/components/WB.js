@@ -302,28 +302,33 @@ export default {
 
   // 当从服务器接收到涂鸦数据，需要在画板上实时绘制
   onRecvDrawing(drawing) {
-    if (!drawing.end) {
+    const { end, strokeId } = drawing;
+    if (!end) {
       // 保存绘画数据
-      const stroke = this.drawings.get(drawing.strokeId) || [];
+      const stroke = this.drawings.get(strokeId) || [];
       if (stroke.length === 0) {
-        this.strokes.push(drawing.strokeId);
+        this.strokes.push(strokeId);
       }
       stroke.push(drawing);
-      this.drawings.set(drawing.strokeId, stroke);
+      this.drawings.set(strokeId, stroke);
     } else {
-      const stroke = this.drawings.get(drawing.strokeId);
+      const stroke = this.drawings.get(strokeId);
       if (stroke && stroke.length > 0) {
-        for (const drawing of stroke) {
-          // 在 recv 图层上绘制笔划
-          this.drawLineOnRecv(
-            this.toPen(drawing.pen),
-            this.toPoint(drawing.beginPoint),
-            this.toPoint(drawing.controlPoint),
-            this.toPoint(drawing.endPoint),
-          );
+        let drawn = false;
+        for (const { pen, beginPoint, controlPoint, endPoint } of stroke) {
+          if (this.isLogicPointVisible(beginPoint) && this.isLogicPointVisible(controlPoint) && this.isLogicPointVisible(endPoint)) {
+            // 在 recv 图层上绘制笔划
+            this.drawLineOnRecv(
+              this.toPen(pen),
+              this.toPoint(beginPoint),
+              this.toPoint(controlPoint),
+              this.toPoint(endPoint),
+            );
+            drawn = true;
+          }
         }
         // 当前笔划结束后，拷贝 recv 图层到最下方画板图层
-        this.copyFromRecv(stroke[0].pen);
+        drawn && this.copyFromRecv(stroke[0].pen);
       }
     }
   },
