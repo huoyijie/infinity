@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>协作式白板</title>
+        <title>Infinite Space</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <WhiteBoard />
