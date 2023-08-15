@@ -2,6 +2,7 @@ import io from 'socket.io-client';
 import msgpackParser from 'socket.io-msgpack-parser';
 import { LazyBrush } from 'lazy-brush';
 import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
 
 // 通过 uuid 生成 stroke id
 const newStrokeId = () => uuidv4().replaceAll('-', '');
@@ -117,9 +118,13 @@ export default {
     this.lbCanvas.addEventListener('touchend', (e) => that.touchEnd(), false);
     this.lbCanvas.addEventListener('touchcancel', (e) => that.touchEnd(), false);
 
+    const socketioUrl = process.env.NEXT_PUBLIC_SOCKETIO_URL || 'ws://localhost:5000';
+    // basePath must start with '/'
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/';
     // 建立 socket.io 连接
-    this.socket = io(process.env.NEXT_PUBLIC_SOCKETIO_URL || 'ws://localhost:4000', {
+    this.socket = io(socketioUrl, {
       parser: msgpackParser,
+      path: path.join(basePath, 'socket.io')
     });
     this.socket.on('drawings', (drawings) => {
       that.onRecvDrawings(drawings);

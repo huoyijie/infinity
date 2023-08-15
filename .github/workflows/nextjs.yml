@@ -80,7 +80,8 @@ jobs:
       - name: Build with Next.js
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
         env:
-          NEXT_PUBLIC_SOCKETIO_URL: wss://huoyijie.cn:1024/infinity
+          NEXT_PUBLIC_SOCKETIO_URL: wss://huoyijie.cn:1024
+          NEXT_PUBLIC_BASE_PATH: /infinity
       - name: Static HTML export with Next.js
         run: ${{ steps.detect-package-manager.outputs.runner }} next export
       - name: Upload artifact
