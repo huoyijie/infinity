@@ -8,11 +8,11 @@ import path from 'path';
 const newStrokeId = () => uuidv4().replaceAll('-', '');
 
 // 回调限流: 至少间隔 delay 毫秒才会调用事件处理回调函数
-function throttle(func, delay) {
+const throttle = (func, delay) => {
   let previousCall = new Date().getTime();
   return function () {
     // force call func
-    const force = arguments[0];
+    const { force } = arguments[0];
     const time = new Date().getTime();
     if (force || (time - previousCall) >= delay) {
       previousCall = time;
@@ -20,6 +20,8 @@ function throttle(func, delay) {
     }
   };
 }
+
+const replaceHash = throttle(({ hash }) => location.replace(hash), 50);
 
 export default {
   // socket.io 连接句柄
@@ -257,9 +259,7 @@ export default {
 
   // 更新 URL hash 中的三维坐标
   updateHash(force) {
-    const that = this;
-    const replaceHash = throttle(() => location.replace(that.hash()), 20);
-    replaceHash(force);
+    replaceHash({ force, hash: this.hash() });
   },
 
   // 在最上面图层画 Brush
