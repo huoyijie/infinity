@@ -5,8 +5,9 @@
 * Prerequisites
 
 1. Node v18.15.0+
-2. Mysql server
-3. git
+2. npm 9.5.0+
+3. Mysql server
+4. git
 
 * Clone the repo
 
@@ -57,6 +58,36 @@ Query OK, 1 row affected (0.53 sec)
 
 # exit
 mysql> exit
+```
+
+* Creating the database schemas
+
+```bash
+$ npx prisma db push
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": MySQL database "infinity" at "localhost:3306"
+
+🚀  Your database is now in sync with your Prisma schema. Done in 545ms
+
+✔ Generated Prisma Client (5.1.1 | library) to ./node_modules/@prisma/client in 72ms
+```
+
+Query the database:
+
+```bash
+mysql> use infinity
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A
+
+Database changed
+mysql> show tables;
++--------------------+
+| Tables_in_infinity |
++--------------------+
+| Drawing            |
++--------------------+
+1 row in set (0.00 sec)
 ```
 
 * Run server

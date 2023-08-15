@@ -4,8 +4,9 @@
 
 * Prerequisites
 
-1. Node v18.15.0+
-2. git
+1. Node 18.15.0+
+2. npm 9.5.0+
+3. git
 
 ```bash
 $ cd ~/vswork
