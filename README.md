@@ -1,4 +1,9 @@
-# An easy to use whiteboard
+# Infinity
+
+## Get started
+
+* bankend
+* frontend
 
 ## 控制画线平滑的算法
 
