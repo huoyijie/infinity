@@ -1,6 +1,6 @@
 # Frontend
 
-## Run locally
+## Get started (run locally)
 
 * Prerequisites
 
@@ -38,4 +38,16 @@ If you run the bankend server behind reverse server (such as Nginx) and use tls,
 $ npm run dev
 ```
 
-## Deploy steps [Github pages]
+## Deploy with Github Actions (Github pages)
+
+See `.github/workflows/nextjs.yml`
+
+## All Environment variables
+
+* NEXT_PUBLIC_SOCKETIO_URL=ws://localhost:5000
+
+If your backend server is deployed behind nginx with ssl/http2 enabled, you shoud forward the websocket upgrade request from nginx to backend server, and you shoud config `NEXT_PUBLIC_SOCKETIO_URL=wss://your_domain`.
+
+* NEXT_PUBLIC_BASE_PATH=/
+
+If your backend server configed with `BASH_PATH=/infinity`, then you shoud config `NEXT_PUBLIC_BASE_PATH=/infinity` too.

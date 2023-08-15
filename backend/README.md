@@ -1,6 +1,6 @@
 # Bankend
 
-## Deploy steps [Ubuntu 22.04]
+## Get started [Ubuntu 22.04]
 
 * Prerequisites
 
@@ -95,3 +95,23 @@ mysql> show tables;
 ```bash
 $ npm start
 ```
+
+## All Environment variables
+
+* HOST (default: localhost)
+
+Backend server listen addr.
+
+* PORT (default: 5000)
+
+Backend server listen port.
+
+* BASE_PATH (default: /)
+
+You shoud deploy backend server behind nginx with ssl/htt2 enabled.
+
+Such as `wss://huoyijie.cn:1024/infinity/socket.io`, bashPath is `/infinity`.
+
+* ALLOW_ORIGIN (default: *)
+
+You should config like this `ALLOW_ORIGIN=https://huoyijie.github.io` for security
