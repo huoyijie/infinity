@@ -118,6 +118,9 @@ setInterval(async () => {
 Throttling navigation to prevent the browser from hanging. See https://crbug.com/1038223. Command line switch --disable-ipc-flooding-protection can be used to bypass the protection
 
 ```js
+// 通过 uuid 生成 stroke id
+const newStrokeId = () => uuidv4().replaceAll('-', '');
+
 // 回调限流: 至少间隔 delay 毫秒才会调用事件处理回调函数
 const throttle = (func, delay) => {
   let previousCall = new Date().getTime();
@@ -132,5 +135,7 @@ const throttle = (func, delay) => {
   };
 }
 
-const replaceHash = throttle(({ hash }) => location.replace(hash), 50);
+const replaceHash = throttle(({ hash }) => location.replace(hash), 100);
+
+const redrawWithThrottle = throttle((WB) => WB.redraw(), 200);
 ```

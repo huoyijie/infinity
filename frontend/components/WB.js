@@ -21,7 +21,9 @@ const throttle = (func, delay) => {
   };
 }
 
-const replaceHash = throttle(({ hash }) => location.replace(hash), 50);
+const replaceHash = throttle(({ hash }) => location.replace(hash), 100);
+
+const redrawWithThrottle = throttle((WB) => WB.redraw(), 200);
 
 export default {
   // socket.io 连接句柄
@@ -118,7 +120,7 @@ export default {
     // 添加鼠标事件处理
     this.lbCanvas.addEventListener('mousedown', (e) => that.mouseDown(e), false);
     // 移动鼠标事件处理
-    this.lbCanvas.addEventListener('mousemove', (e) => that.mouseMove(e), false);
+    this.lbCanvas.addEventListener('mousemove', throttle((e) => that.mouseMove(e), 20), false);
     // 释放鼠标事件处理
     this.lbCanvas.addEventListener('mouseup', (e) => that.mouseUp(), false);
     this.lbCanvas.addEventListener('mouseout', (e) => {
@@ -126,11 +128,11 @@ export default {
       that.drawBrush(true);
     }, false);
     // 滚轮缩放事件处理
-    this.lbCanvas.addEventListener('wheel', (e) => that.mouseWheel(e), false);
+    this.lbCanvas.addEventListener('wheel', throttle((e) => that.mouseWheel(e), 100), false);
 
     // 添加手机触屏事件处理
     this.lbCanvas.addEventListener('touchstart', (e) => that.touchStart(e), false);
-    this.lbCanvas.addEventListener('touchmove', (e) => that.touchMove(e), false);
+    this.lbCanvas.addEventListener('touchmove', throttle((e) => that.touchMove(e), 20), false);
     this.lbCanvas.addEventListener('touchend', (e) => that.touchEnd(), false);
     this.lbCanvas.addEventListener('touchcancel', (e) => that.touchEnd(), false);
 
@@ -551,7 +553,7 @@ export default {
       this.offsetY += (cursorY - this.prevCursorY) / this.scale;
       this.updateHash();
       // 移动画板过程中会不断重新绘制
-      this.redraw();
+      redrawWithThrottle(this);
     }
 
     // 画 brush
@@ -688,7 +690,7 @@ export default {
       this.offsetY += (panY / this.scale);
       this.updateHash();
       // 移动画板过程中会不断重新绘制
-      this.redraw();
+      redrawWithThrottle(this);
     }
 
     // 两根以上手指伸缩画板
