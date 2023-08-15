@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Infinite Space</title>
+        <title>Infinity</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <WhiteBoard />
