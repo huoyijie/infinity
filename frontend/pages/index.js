@@ -6,7 +6,7 @@ export default function Home() {
     <>
       <Head>
         <title>Infinity</title>
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="./favicon.ico" />
       </Head>
       <WhiteBoard />
     </>

@@ -27,7 +27,7 @@ NEXT_PUBLIC_SOCKETIO_URL=ws://your_bankend_server_domain_or_ip:your_bankend_serv
 EOF
 ```
 
-Don't forget to change `your_bankend_server_domain_or_ip` and `your_bankend_server_port` (5000).
+Don't forget to change `your_bankend_server_domain_or_ip` (localhost) and `your_bankend_server_port` (5000).
 
 If you run the bankend server behind reverse server (such as Nginx) and use tls, change `ws` to `wss`. 
 
