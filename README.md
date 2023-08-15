@@ -112,3 +112,23 @@ setInterval(async () => {
 ## socket.io 通信
 
 * socket.io msgpack
+
+## problem
+
+Throttling navigation to prevent the browser from hanging. See https://crbug.com/1038223. Command line switch --disable-ipc-flooding-protection can be used to bypass the protection
+
+```js
+// 回调限流: 至少间隔 delay 毫秒才会调用事件处理回调函数
+function throttle(func, delay) {
+  let previousCall = new Date().getTime();
+  return function () {
+    // force call func
+    const force = arguments[0];
+    const time = new Date().getTime();
+    if (force || (time - previousCall) >= delay) {
+      previousCall = time;
+      func.apply(null, arguments);
+    }
+  };
+}
+```

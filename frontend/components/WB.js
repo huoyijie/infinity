@@ -7,6 +7,20 @@ import path from 'path';
 // 通过 uuid 生成 stroke id
 const newStrokeId = () => uuidv4().replaceAll('-', '');
 
+// 回调限流: 至少间隔 delay 毫秒才会调用事件处理回调函数
+function throttle(func, delay) {
+  let previousCall = new Date().getTime();
+  return function () {
+    // force call func
+    const force = arguments[0];
+    const time = new Date().getTime();
+    if (force || (time - previousCall) >= delay) {
+      previousCall = time;
+      func.apply(null, arguments);
+    }
+  };
+}
+
 export default {
   // socket.io 连接句柄
   socket: null,
@@ -237,13 +251,15 @@ export default {
         this.offsetY = 0;
         this.scale = 1;
       }
-      this.updateHash();
+      this.updateHash(true);
     }
   },
 
   // 更新 URL hash 中的三维坐标
-  updateHash() {
-    location.hash = this.hash();
+  updateHash(force) {
+    const that = this;
+    const replaceHash = throttle(() => location.replace(that.hash()), 20);
+    replaceHash(force);
   },
 
   // 在最上面图层画 Brush
