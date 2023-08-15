@@ -1,6 +1,7 @@
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import msgpackParser from 'socket.io-msgpack-parser';
+import path from 'path';
 
 // 加载 .env 环境变量
 import { config } from 'dotenv';
@@ -50,13 +51,15 @@ setInterval(async () => {
 // 创建 http server
 const httpServer = createServer();
 
+// basePath must start with '/'
+const basePath = process.env.BASE_PATH || '/';
+const origin = process.env.ALLOW_ORIGIN || '*';
 // 创建 socket.io server
 const io = new Server(httpServer, {
   parser: msgpackParser,
   serveClient: false,
-  cors: {
-    origin: '*'
-  }
+  path: path.join(basePath, 'socket.io'),
+  cors: { origin }
 });
 
 // 新客户端连接
@@ -105,5 +108,9 @@ io.on('connection', async (socket) => {
   });
 });
 
+const port = process.env.PORT || 5000;
+const host = process.env.HOST || 'localhost';
 // 启动服务器
-httpServer.listen(process.env.PORT || 4000);
+httpServer.listen(port, host, () => {
+  console.log(`server listen on ${host}:${port}`);
+});
