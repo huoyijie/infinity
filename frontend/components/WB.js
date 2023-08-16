@@ -271,13 +271,13 @@ export default {
       if (clear) return;
 
       const { x, y } = this.lazyBrush.getBrushCoordinates();
+      // 2*r is a little larger then pen size
+      const r = this.toPenSize() / 1.5;
+      const { color } = this.pen;
+      this.lbCtx.fillStyle = color;
       this.lbCtx.beginPath();
-      this.lbCtx.strokeStyle = this.pen.color;
-      this.lbCtx.fillStyle = this.pen.color;
-      this.lbCtx.arc(x, y, Math.max(this.toPenSize() / 2, 2), 0, Math.PI * 2);
+      this.lbCtx.arc(x, y, r, 0, Math.PI * 2);
       this.lbCtx.fill();
-      this.lbCtx.stroke();
-      this.lbCtx.closePath();
     }
   },
 
@@ -291,7 +291,6 @@ export default {
     this.draftCtx.moveTo(beginPoint.x, beginPoint.y);
     this.draftCtx.quadraticCurveTo(controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
     this.draftCtx.stroke();
-    this.draftCtx.closePath();
   },
 
   // 从中间 draft 图层拷贝到最下方画板图层
@@ -311,7 +310,6 @@ export default {
     this.recvCtx.moveTo(beginPoint.x, beginPoint.y);
     this.recvCtx.quadraticCurveTo(controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
     this.recvCtx.stroke();
-    this.recvCtx.closePath();
   },
 
   // 从 Recv 图层拷贝笔划到最下方的画板图层
