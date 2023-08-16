@@ -13,6 +13,8 @@ import OpacityContext from './OpacityContext';
 import Pencil from './assets/Pencil';
 import MouseWheel from './assets/MouseWheel';
 import TouchPinch from './assets/TouchPinch';
+import BarsUp from './assets/BarsUp';
+import BarsDown from './assets/BarsDown';
 
 export default function ({ showHelp }) {
   const { setShowHelp, resetAll } = useContext(SettingContext);
@@ -24,7 +26,9 @@ export default function ({ showHelp }) {
         setShowHelp(!showHelp);
       }} />
       {showHelp && (
-        <div className="fixed left-16 border rounded grid grid-cols-2 gap-1 bg-white text-slate-400 p-2">
+        <div className="fixed left-16 -translate-y-40 border rounded grid grid-cols-2 gap-1 bg-white text-slate-400 p-2">
+          <span><BarsUp />Collapse</span>
+          <span><BarsDown />Expand</span>
           <span><PencilSquare />Draw mode</span>
           <span><Tape />Erase mode</span>
           <span><HandRaised />Move mode</span>
