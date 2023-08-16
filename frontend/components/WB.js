@@ -294,10 +294,12 @@ export default {
   },
 
   // 从中间 draft 图层拷贝到最下方画板图层
-  copyFromDraft({ pen, isErase }) {
+  copyFromDraft({ pen, isErase }, { x0, y0, x1, y1 }) {
     this.ctx.globalAlpha = isErase ? 1 : (pen || this.pen).opacity / 100;
-    this.ctx.drawImage(this.draftCanvas, 0, 0);
-    this.draftCtx.clearRect(0, 0, this.draftCanvas.width, this.draftCanvas.height);
+    const width = x1 - x0;
+    const height = y1 - y0;
+    this.ctx.drawImage(this.draftCanvas, x0, y0, width, height, x0, y0, width, height);
+    this.draftCtx.clearRect(x0, y0, width, height);
   },
 
   // 在 recv 图层上画线
@@ -313,11 +315,66 @@ export default {
   },
 
   // 从 Recv 图层拷贝笔划到最下方的画板图层
-  copyFromRecv(pen) {
+  copyFromRecv(pen, { x0, y0, x1, y1 }) {
     this.ctx.globalAlpha = (pen || this.pen).opacity / 100;
-    this.ctx.drawImage(this.recvCanvas, 0, 0);
-    this.recvCtx.clearRect(0, 0, this.recvCanvas.width, this.recvCanvas.height);
+    const width = x1 - x0;
+    const height = y1 - y0;
+    this.ctx.drawImage(this.recvCanvas, x0, y0, width, height, x0, y0, width, height);
+    this.recvCtx.clearRect(x0, y0, width, height);
   },
+
+  // 创建笔划区域窗口
+  strokeWin: () => ({
+    x0: -1,
+    y0: -1,
+    x1: -1,
+    y1: -1,
+    drawn() {
+      const { x0, y0, x1, y1 } = this;
+      return !(x0 === -1 && y0 === -1 && x1 === -1 && y1 === -1);
+    },
+    update(penSize, bp, cp, ep) {
+      if (this.x0 === -1 || (bp.x - penSize) < this.x0) {
+        this.x0 = bp.x - penSize;
+      }
+      if ((cp.x - penSize) < this.x0) {
+        this.x0 = cp.x - penSize;
+      }
+      if ((ep.x - penSize) < this.x0) {
+        this.x0 = ep.x - penSize;
+      }
+
+      if (this.x1 === -1 || (bp.x + penSize) > this.x1) {
+        this.x1 = bp.x + penSize;
+      }
+      if ((cp.x + penSize) > this.x1) {
+        this.x1 = cp.x + penSize;
+      }
+      if ((ep.x + penSize) > this.x1) {
+        this.x1 = ep.x + penSize;
+      }
+
+      if (this.y0 === -1 || (bp.y - penSize) < this.y0) {
+        this.y0 = bp.y - penSize;
+      }
+      if ((cp.y - penSize) < this.y0) {
+        this.y0 = cp.y - penSize;
+      }
+      if ((ep.y - penSize) < this.y0) {
+        this.y0 = ep.y - penSize;
+      }
+
+      if (this.y1 === -1 || (bp.y + penSize) > this.y1) {
+        this.y1 = bp.y + penSize;
+      }
+      if ((cp.y + penSize) > this.y1) {
+        this.y1 = cp.y + penSize;
+      }
+      if ((ep.y + penSize) > this.y1) {
+        this.y1 = ep.y + penSize;
+      }
+    }
+  }),
 
   // 当从服务器接收到涂鸦数据，需要在画板上实时绘制
   onRecvDrawing(drawing) {
@@ -333,20 +390,20 @@ export default {
     } else {
       const stroke = this.drawings.get(strokeId);
       if (stroke && stroke.length > 0) {
-        let drawn = false;
+        const sw = this.strokeWin();
         const pen = this.toPen(stroke[0].pen);
         for (const { beginPoint, controlPoint, endPoint } of stroke) {
-          const cp = this.toPoint(controlPoint);
-          if (this.isPointVisible(cp)) {
-            const bp = this.toPoint(beginPoint);
-            const ep = this.toPoint(endPoint);
+          let bp, cp, ep;
+          if (this.isPointVisible(bp = this.toPoint(beginPoint)) || this.isPointVisible(cp = this.toPoint(controlPoint)) || this.isPointVisible(ep = this.toPoint(endPoint))) {
+            if (!cp) cp = this.toPoint(controlPoint);
+            if (!ep) ep = this.toPoint(endPoint);
             // 在 recv 图层上绘制笔划
             this.drawLineOnRecv(pen, bp, cp, ep);
-            drawn = true;
+            sw.update(pen.size, bp, cp, ep);
           }
         }
         // 当前笔划结束后，拷贝 recv 图层到最下方画板图层
-        drawn && this.copyFromRecv(pen);
+        sw.drawn() && this.copyFromRecv(pen, sw);
       }
     }
   },
@@ -402,20 +459,21 @@ export default {
     for (const strokeId of this.strokes) {
       const stroke = this.drawings.get(strokeId);
       if (stroke && stroke.length > 0) {
+        const sw = this.strokeWin();
         const pen = this.toPen(stroke[0].pen);
-        let drawn = false;
         // 在 draft 图层上绘制笔划
         for (const { beginPoint, controlPoint, endPoint } of stroke) {
-          const cp = this.toPoint(controlPoint);
-          if (this.isPointVisible(cp)) {
-            const bp = this.toPoint(beginPoint);
-            const ep = this.toPoint(endPoint);
+          let bp, cp, ep;
+          if (this.isPointVisible(bp = this.toPoint(beginPoint)) || this.isPointVisible(cp = this.toPoint(controlPoint)) || this.isPointVisible(ep = this.toPoint(endPoint))) {
+            if (!cp) cp = this.toPoint(controlPoint);
+            if (!ep) ep = this.toPoint(endPoint);
+            // 在 draft 图层上绘制笔划
             this.drawLineOnDraft(pen, bp, cp, ep);
-            drawn = true;
+            sw.update(pen.size, bp, cp, ep);
           }
         }
         // 拷贝到最下方画板图层
-        drawn && this.copyFromDraft({ pen });
+        sw.drawn() && this.copyFromDraft({ pen }, sw);
       }
     }
   },
@@ -569,7 +627,7 @@ export default {
           strokeId: this.currentStroke,
           end: true,
         });
-        this.copyFromDraft({ isErase: this.isErase() });
+        this.copyFromDraft({ isErase: this.isErase() }, { x0: 0, y0: 0, x1: this.canvas.width, y1: this.canvas.height });
         if (this.isErase()) {
           this.setDraftOpacity();
         }
@@ -743,7 +801,7 @@ export default {
         strokeId: this.currentStroke,
         end: true,
       });
-      this.copyFromDraft({ isErase: this.isErase() });
+      this.copyFromDraft({ isErase: this.isErase() }, { x0: 0, y0: 0, x1: this.canvas.width, y1: this.canvas.height });
       if (this.isErase()) {
         this.setDraftOpacity();
       }
