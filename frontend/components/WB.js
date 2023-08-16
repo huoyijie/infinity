@@ -128,7 +128,7 @@ export default {
       that.drawBrush(true);
     }, false);
     // 滚轮缩放事件处理
-    this.lbCanvas.addEventListener('wheel', throttle((e) => that.mouseWheel(e), 100), false);
+    this.lbCanvas.addEventListener('wheel', throttle((e) => that.mouseWheel(e), 50), false);
 
     // 添加手机触屏事件处理
     this.lbCanvas.addEventListener('touchstart', (e) => that.touchStart(e), false);
@@ -336,20 +336,19 @@ export default {
       const stroke = this.drawings.get(strokeId);
       if (stroke && stroke.length > 0) {
         let drawn = false;
-        for (const { pen, beginPoint, controlPoint, endPoint } of stroke) {
-          if (this.isLogicPointVisible(beginPoint) && this.isLogicPointVisible(controlPoint) && this.isLogicPointVisible(endPoint)) {
+        const pen = this.toPen(stroke[0].pen);
+        for (const { beginPoint, controlPoint, endPoint } of stroke) {
+          const cp = this.toPoint(controlPoint);
+          if (this.isPointVisible(cp)) {
+            const bp = this.toPoint(beginPoint);
+            const ep = this.toPoint(endPoint);
             // 在 recv 图层上绘制笔划
-            this.drawLineOnRecv(
-              this.toPen(pen),
-              this.toPoint(beginPoint),
-              this.toPoint(controlPoint),
-              this.toPoint(endPoint),
-            );
+            this.drawLineOnRecv(pen, bp, cp, ep);
             drawn = true;
           }
         }
         // 当前笔划结束后，拷贝 recv 图层到最下方画板图层
-        drawn && this.copyFromRecv(stroke[0].pen);
+        drawn && this.copyFromRecv(pen);
       }
     }
   },
@@ -404,21 +403,22 @@ export default {
     // 所有笔划存储在 drawings 中
     for (const strokeId of this.strokes) {
       const stroke = this.drawings.get(strokeId);
-      let drawn = false;
-      // 在 draft 图层上绘制笔划
-      for (const { pen, beginPoint, controlPoint, endPoint } of stroke) {
-        if (this.isLogicPointVisible(beginPoint) && this.isLogicPointVisible(controlPoint) && this.isLogicPointVisible(endPoint)) {
-          this.drawLineOnDraft(
-            this.toPen(pen),
-            this.toPoint(beginPoint),
-            this.toPoint(controlPoint),
-            this.toPoint(endPoint),
-          );
-          drawn = true;
+      if (stroke && stroke.length > 0) {
+        const pen = this.toPen(stroke[0].pen);
+        let drawn = false;
+        // 在 draft 图层上绘制笔划
+        for (const { beginPoint, controlPoint, endPoint } of stroke) {
+          const cp = this.toPoint(controlPoint);
+          if (this.isPointVisible(cp)) {
+            const bp = this.toPoint(beginPoint);
+            const ep = this.toPoint(endPoint);
+            this.drawLineOnDraft(pen, bp, cp, ep);
+            drawn = true;
+          }
         }
+        // 拷贝到最下方画板图层
+        drawn && this.copyFromDraft({ pen });
       }
-      // 拷贝到最下方画板图层
-      drawn && this.copyFromDraft({ pen: stroke[0].pen });
     }
   },
 
@@ -474,8 +474,7 @@ export default {
   },
 
   // 逻辑点是否在可视窗口范围内
-  isLogicPointVisible(point) {
-    const { x, y } = this.toPoint(point);
+  isPointVisible({ x, y }) {
     return x >= 0 && x <= this.canvas.width && y >= 0 && y <= this.canvas.height;
   },
   /* 坐标转换函数结束 */
