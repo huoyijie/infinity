@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import Color from './assets/Color';
 import Button from './Button';
 import WBContext from './WBContext';
@@ -33,14 +33,21 @@ const colors = [
 
 export default function ({ showColors, showOpacity }) {
   const WB = useContext(WBContext);
-  const [selectedColor, setSelectedColor] = useState('#000000');
+  const [selectedColor, setSelectedColor] = useState(null);
   const { opacity, setOpacity } = useContext(OpacityContext);
   const { setShowColors, setShowOpacity, resetAll } = useContext(SettingContext);
 
+  useEffect(() => {
+    const selectedColor = localStorage.getItem('selectedColor') || 'black';
+    WB.setColor(selectedColor);
+    setSelectedColor(selectedColor);
+  }, []);
+
   // 设置颜色
   const setColor = (color) => {
-    setSelectedColor(color);
     WB.setColor(color);
+    setSelectedColor(color);
+    localStorage.setItem('selectedColor', color);
   };
   // 点击颜色组件选色处理函数
   const selectColor = (color) => {

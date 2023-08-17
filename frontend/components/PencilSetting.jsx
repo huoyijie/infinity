@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import Button from './Button';
 import Pencil from './assets/Pencil';
 import WBContext from './WBContext';
@@ -7,7 +7,13 @@ import SettingContext from './SettingContext';
 export default function ({ showPencilSetting }) {
   const WB = useContext(WBContext);
   const { setShowPencilSetting, resetAll } = useContext(SettingContext);
-  const [pencilSize, setPencilSize] = useState(10);
+  const [pencilSize, setPencilSize] = useState(null);
+
+  useEffect(() => {
+    const pencilSize = Number(localStorage.getItem('pencilSize') || 15);
+    WB.setSize(pencilSize);
+    setPencilSize(pencilSize);
+  }, []);
 
   return (
     <div className="flex flex-row">
@@ -20,8 +26,9 @@ export default function ({ showPencilSetting }) {
           <div className="rounded h-10 p-2">
             <input id="default-range" type="range" defaultValue={pencilSize} min={1} max={100} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
               const { value } = e.target;
-              setPencilSize(value);
               WB.setSize(value);
+              setPencilSize(value);
+              localStorage.setItem('pencilSize', value);
             }} />
           </div>
           <div className="text-center p-2">{pencilSize}</div>

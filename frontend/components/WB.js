@@ -47,14 +47,7 @@ export default {
   mode: 'move',
 
   // 画笔
-  pen: {
-    // 默认颜色
-    color: 'black',
-    // 不透明度
-    opacity: 100,
-    // 默认画笔粗细(逻辑)
-    size: 10,
-  },
+  pen: {},
 
   // 所有绘画数据
   strokes: null,
@@ -91,7 +84,7 @@ export default {
   }),
 
   // 初始化画板
-  init(canvasRef, draftCanvasRef, lbCanvasRef, mode, onLoad, onCursor) {
+  init(canvasRef, draftCanvasRef, lbCanvasRef, mode, { opacity }, onLoad, onCursor) {
     const that = this;
     // 获取画板元素及上下文对象
     this.canvas = canvasRef.current;
@@ -107,6 +100,7 @@ export default {
     this.history = [];
     // 当画板上进入不同状态时可通过此函数变换鼠标样式
     this.mode = mode;
+    this.pen.opacity = opacity;
     this.onLoad = onLoad;
     this.onCursor = onCursor;
     // 从 URL hash 中解析三维坐标

@@ -9,14 +9,23 @@ function WhiteBoard() {
   const canvasRef = useRef(null);
   const draftCanvasRef = useRef(null);
   const lbCanvasRef = useRef(null);
-  const [mode, setMode] = useState('move');
+  const [mode, setMode] = useState(null);
   const [cursor, setCursor] = useState(null);
-  const [opacity, setOpacity] = useState(100);
+  const [opacity, setOpacity] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // 启动 socket 连接，初始化共享画板组件
   useEffect(() => {
-    WB.init(canvasRef, draftCanvasRef, lbCanvasRef, mode, () => setLoading(false), (cursor) => setCursor(cursor));
+    const mode = localStorage.getItem('mode') || 'move';
+    const opacity = Number(localStorage.getItem('opacity') || 100);
+    setMode(mode);
+    setOpacity(opacity);
+    WB.init(
+      canvasRef,
+      draftCanvasRef,
+      lbCanvasRef,
+      mode,
+      { opacity }, () => setLoading(false), (cursor) => setCursor(cursor));
     return () => WB.close();
   }, []);
 
@@ -36,10 +45,16 @@ function WhiteBoard() {
       <canvas ref={draftCanvasRef} id="draftCanvas" className="fixed z-30 w-full h-full" style={{ opacity: opacity + '%' }}></canvas>
       <canvas ref={canvasRef} id="canvas" className="fixed z-10 w-full h-full"></canvas>
       <WBContext.Provider value={WB}>
-        <OpacityContext.Provider value={{ opacity, setOpacity }}>
+        <OpacityContext.Provider value={{
+          opacity, setOpacity: (opacity) => {
+            setOpacity(opacity);
+            localStorage.setItem('opacity', opacity);
+          }
+        }}>
           <Toolbar mode={mode} setMode={(mode) => {
             WB.setMode(mode);
             setMode(mode);
+            localStorage.setItem('mode', mode);
           }} />
         </OpacityContext.Provider>
       </WBContext.Provider>
