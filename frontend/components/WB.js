@@ -107,23 +107,25 @@ export default {
     this.parseHash();
 
     // 添加鼠标事件处理
-    this.lbCanvas.addEventListener('mousedown', (e) => that.mouseDown(e), false);
+    this.lbCanvas.onmousedown = (e) => that.mouseDown(e);
     // 移动鼠标事件处理
-    this.lbCanvas.addEventListener('mousemove', throttle((e) => that.mouseMove(e), 20), false);
+    this.lbCanvas.onmousemove = throttle((e) => that.mouseMove(e), 20);
     // 释放鼠标事件处理
-    this.lbCanvas.addEventListener('mouseup', (e) => that.mouseUp(), false);
-    this.lbCanvas.addEventListener('mouseout', (e) => {
+    this.lbCanvas.onmouseup = () => that.mouseUp();
+    this.lbCanvas.onmouseout = () => {
       that.mouseUp();
       that.drawBrush(true);
-    }, false);
+    };
     // 滚轮缩放事件处理
-    this.lbCanvas.addEventListener('wheel', throttle((e) => that.mouseWheel(e), 50), false);
+    this.lbCanvas.onwheel = throttle((e) => that.mouseWheel(e), 50);
 
     // 添加手机触屏事件处理
-    this.lbCanvas.addEventListener('touchstart', (e) => that.touchStart(e), false);
-    this.lbCanvas.addEventListener('touchmove', throttle((e) => that.touchMove(e), 20), false);
-    this.lbCanvas.addEventListener('touchend', (e) => that.touchEnd(), false);
-    this.lbCanvas.addEventListener('touchcancel', (e) => that.touchEnd(), false);
+    this.lbCanvas.ontouchstart = (e) => that.touchStart(e);
+    this.lbCanvas.ontouchmove = throttle((e) => that.touchMove(e), 20);
+    this.lbCanvas.ontouchend = () => that.touchEnd();
+    this.lbCanvas.ontouchcancel = () => that.touchEnd();
+
+    this.lbCanvas.onclick = (e) => that.tap(e);
 
     const socketioUrl = process.env.NEXT_PUBLIC_SOCKETIO_URL || 'ws://localhost:5000';
     // basePath must start with '/'
@@ -144,9 +146,7 @@ export default {
     });
 
     // window resize, redraw
-    window.addEventListener('resize', () => {
-      that.redraw();
-    }, false);
+    window.onresize = () => that.redraw();
     // 禁止右键唤起上下文菜单
     document.oncontextmenu = () => false;
 
@@ -738,6 +738,13 @@ export default {
     }
   },
   /* 触屏事件处理结束 */
+
+  // 点击事件处理
+  tap(e) {
+    if (this.mode === 'select') {
+      console.log('tap');
+    }
+  },
 
   // 撤销最后一次笔划
   undo() {

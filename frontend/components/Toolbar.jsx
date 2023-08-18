@@ -11,6 +11,7 @@ import Tape from './assets/Tape';
 import Help from './Help';
 import BarsUp from './assets/BarsUp';
 import BarsDown from './assets/BarsDown';
+import ArrowRipple from './assets/ArrowRipple';
 
 export default function ({ mode, setMode }) {
   const [showColors, setShowColors] = useState(false);
@@ -44,6 +45,7 @@ export default function ({ mode, setMode }) {
           <Button Icon={PencilSquare} selected={mode === 'draw'} onClick={() => onSetMode('draw')} />
           <Button Icon={Tape} selected={mode === 'erase'} onClick={() => onSetMode('erase')} />
           <Button Icon={HandRaised} selected={mode === 'move'} onClick={() => onSetMode('move')} />
+          <Button Icon={ArrowRipple} selected={mode === 'select'} onClick={() => onSetMode('select')} />
           <Button Icon={Undo} disabled={!((mode === 'draw' || mode === 'erase') && canUndo)} onClick={() => setTimeout(() => WB.undo(), 10)} />
           <ColorPicker showColors={showColors} showOpacity={showOpacity} />
           <PencilSetting showPencilSetting={showPencilSetting} />
