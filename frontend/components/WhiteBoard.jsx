@@ -30,11 +30,7 @@ function WhiteBoard() {
       { opacity },
       () => setLoading(false),
       (cursor) => setCursor(cursor),
-      (strokeId, box) => {
-        setSelectedStroke({
-          strokeId, box
-        });
-      });
+      (stroke) => setSelectedStroke(stroke));
     return () => WB.close();
   }, []);
 
@@ -64,6 +60,7 @@ function WhiteBoard() {
             WB.setMode(mode);
             setMode(mode);
             localStorage.setItem('mode', mode);
+            setSelectedStroke(null);
           }} />
         </OpacityContext.Provider>
         {selectedStroke && (

@@ -778,9 +778,11 @@ export default {
         const top = this.toY(y0);
         const width = this.toX(x1) - left;
         const height = this.toY(y1) - top;
-        this.onSelect(strokeId, { left, top, width, height });
+        this.onSelect({
+          strokeId, box: { left, top, width, height }
+        });
       } else {
-        console.log('not select');
+        this.onSelect(null);
       }
     }
   },
