@@ -591,6 +591,7 @@ export default {
 
   mouseWheel(e) {
     this.onClick();
+    this.onSelect(null);
     const scaleAmount = this.thresholdingWheelScale(-e.deltaY / 4800);
 
     // 基于鼠标箭头位置决定怎样伸缩
@@ -619,6 +620,9 @@ export default {
     this.singleTouch = e.touches.length == 1;
     // 多于 2 个触点等同于 2 个，双手指
     this.doubleTouch = e.touches.length > 1;
+    if (this.doubleTouch) {
+      this.onSelect(null);
+    }
     // 只记录 2 个触点坐标
     this.prevTouches[0] = e.touches[0];
     this.prevTouches[1] = e.touches[1];

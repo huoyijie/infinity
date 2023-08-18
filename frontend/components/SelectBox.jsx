@@ -10,7 +10,7 @@ export default function ({ stroke: { strokeId, box: { left, top, width, height }
   };
   return (
     <>
-      <div className="fixed z-[100] text-red-600" style={{ left, top: top - 24 }}><div className="cursor-pointer" onClick={onDelete}><Trash /></div></div>
+      <div className="fixed z-[100] text-red-600" style={{ left, top: top - 36 }}><div className="cursor-pointer" onClick={onDelete}><Trash /></div></div>
       <div id={`stroke-${strokeId}-selected`} className="fixed z-[100] border-dashed border-2 border-slate-400	" style={{ left, top, width, height }}></div>
     </>
   );
