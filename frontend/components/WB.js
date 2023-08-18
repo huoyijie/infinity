@@ -3,6 +3,7 @@ import msgpackParser from 'socket.io-msgpack-parser';
 import { LazyBrush } from 'lazy-brush';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import measureBezier from 'is-hit-quadratic-bezier';
 
 // 通过 uuid 生成 stroke id
 const newStrokeId = () => uuidv4().replaceAll('-', '');
@@ -334,19 +335,44 @@ export default {
       this.drawStroke(this.drawings.get(strokeId));
     }
   },
+
+  // 更新 stroke，并计算 stroke 显示区域
+  updateStroke(strokeId, drawing, draft) {
+    const stroke = this.drawings.get(strokeId) || [];
+
+    const { beginPoint: { x, y } } = drawing;
+    if (!stroke.inf_area) {
+      stroke.inf_area = { x0: x, y0: y, x1: x, y1: y };
+    } else {
+      if (x < stroke.inf_area.x0) {
+        stroke.inf_area.x0 = x;
+      } else if (x > stroke.inf_area.x1) {
+        stroke.inf_area.x1 = x;
+      }
+      if (y < stroke.inf_area.y0) {
+        stroke.inf_area.y0 = y;
+      } else if (y > stroke.inf_area.y1) {
+        stroke.inf_area.y1 = y;
+      }
+    }
+
+    stroke.push(drawing);
+    if (stroke.length === 1) {
+      this.strokes.push(strokeId);
+      if (draft) {
+        this.history.push(strokeId);
+        this.onCanUndo(true);
+      }
+    }
+    this.drawings.set(strokeId, stroke);
+  },
   /** 最下方画板图层操作 end */
 
   // 当从服务器接收到涂鸦数据，需要在画板上实时绘制
   onRecvDrawing(drawing) {
     const { end, strokeId } = drawing;
     if (!end) {
-      // 保存绘画数据
-      const stroke = this.drawings.get(strokeId) || [];
-      if (stroke.length === 0) {
-        this.strokes.push(strokeId);
-      }
-      stroke.push(drawing);
-      this.drawings.set(strokeId, stroke);
+      this.updateStroke(strokeId, drawing);
     } else {
       this.drawStroke(this.drawings.get(strokeId));
     }
@@ -356,22 +382,17 @@ export default {
   onRecvDrawings(drawings) {
     for (const drawing of drawings) {
       const { strokeId, color, opacity, size, beginPointX, beginPointY, ctrlPointX, ctrlPointY, endPointX, endPointY } = drawing;
-      const stroke = this.drawings.get(strokeId) || [];
-      if (stroke.length === 0) {
-        this.strokes.push(strokeId);
-      }
       const pen = { color, opacity, size };
       const beginPoint = { x: beginPointX, y: beginPointY };
       const controlPoint = { x: ctrlPointX, y: ctrlPointY };
       const endPoint = { x: endPointX, y: endPointY };
-      stroke.push({
+      this.updateStroke(strokeId, {
         strokeId,
         pen,
         beginPoint,
         controlPoint,
         endPoint,
       });
-      this.drawings.set(strokeId, stroke);
     }
     this.redraw();
     this.onLoad();
@@ -452,7 +473,7 @@ export default {
     return this.canvas.width / this.scale;
   },
 
-  // 逻辑点是否在可视窗口范围内
+  // 是否在可视窗口范围内
   isPointVisible({ x, y }) {
     return x >= 0 && x <= this.canvas.width && y >= 0 && y <= this.canvas.height;
   },
@@ -507,16 +528,7 @@ export default {
           controlPoint: this.toLogicPoint(controlPoint),
           endPoint: this.toLogicPoint(endPoint),
         };
-        // 保存笔划
-        const stroke = this.drawings.get(drawing.strokeId) || [];
-        // 记录笔划 history
-        if (stroke.length === 0) {
-          this.strokes.push(drawing.strokeId);
-          this.history.push(drawing.strokeId);
-          this.onCanUndo(true);
-        }
-        stroke.push(drawing);
-        this.drawings.set(drawing.strokeId, stroke);
+        this.updateStroke(drawing.strokeId, drawing, true);
         // 把当前笔划发送到服务器
         this.socket.emit('drawing', drawing);
 
@@ -638,17 +650,7 @@ export default {
           controlPoint: this.toLogicPoint(controlPoint),
           endPoint: this.toLogicPoint(endPoint),
         };
-
-        // 保存笔划
-        const stroke = this.drawings.get(drawing.strokeId) || [];
-        // 记录笔划 history
-        if (stroke.length === 0) {
-          this.strokes.push(drawing.strokeId);
-          this.history.push(drawing.strokeId);
-          this.onCanUndo(true);
-        }
-        stroke.push(drawing);
-        this.drawings.set(drawing.strokeId, stroke);
+        this.updateStroke(drawing.strokeId, drawing, true);
         // 把当前笔划发送到服务器
         this.socket.emit('drawing', drawing);
 
@@ -742,7 +744,25 @@ export default {
   // 点击事件处理
   tap(e) {
     if (this.mode === 'select') {
-      console.log('tap');
+      const selected = [];
+      const p = this.toLogicPoint({ x: e.pageX, y: e.pageY });
+      for (const strokeId of this.strokes) {
+        const stroke = this.drawings.get(strokeId);
+        const { inf_area: { x0, y0, x1, y1 } } = stroke;
+        if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1) {
+          for (const { beginPoint, controlPoint, endPoint, pen } of stroke) {
+            const { isHit } = measureBezier(beginPoint, controlPoint, endPoint);
+            const distance = Math.min(this.toPen(pen).size, 20);
+            if (isHit(p, distance)) {
+              selected.push(stroke);
+              break;
+            }
+          }
+        }
+      }
+      for (const { inf_area: { x0, y0, x1, y1 } } of selected) {
+        console.log(this.toX(x0), this.toY(y0), this.toX(x1), this.toY(y1));
+      }
     }
   },
 
