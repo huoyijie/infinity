@@ -4,6 +4,7 @@ import Toolbar from './Toolbar';
 import WBContext from './WBContext';
 import OpacityContext from './OpacityContext';
 import Spinner from './Spinner';
+import SelectBox from './SelectBox';
 
 function WhiteBoard() {
   const canvasRef = useRef(null);
@@ -13,6 +14,7 @@ function WhiteBoard() {
   const [cursor, setCursor] = useState(null);
   const [opacity, setOpacity] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedStroke, setSelectedStroke] = useState(null);
 
   // 启动 socket 连接，初始化共享画板组件
   useEffect(() => {
@@ -25,7 +27,14 @@ function WhiteBoard() {
       draftCanvasRef,
       lbCanvasRef,
       mode,
-      { opacity }, () => setLoading(false), (cursor) => setCursor(cursor));
+      { opacity },
+      () => setLoading(false),
+      (cursor) => setCursor(cursor),
+      (strokeId, box) => {
+        setSelectedStroke({
+          strokeId, box
+        });
+      });
     return () => WB.close();
   }, []);
 
@@ -57,6 +66,9 @@ function WhiteBoard() {
             localStorage.setItem('mode', mode);
           }} />
         </OpacityContext.Provider>
+        {selectedStroke && (
+          <SelectBox stroke={selectedStroke} setSelectedStroke={setSelectedStroke} />
+        )}
       </WBContext.Provider>
     </>
   );

@@ -41,6 +41,7 @@ export default {
   lbCtx: null,
   onLoad: () => { },
   onCursor: () => { },
+  onSelect: () => { },
   onClick: () => { },
   onCanUndo: () => { },
 
@@ -85,7 +86,7 @@ export default {
   }),
 
   // 初始化画板
-  init(canvasRef, draftCanvasRef, lbCanvasRef, mode, { opacity }, onLoad, onCursor) {
+  init(canvasRef, draftCanvasRef, lbCanvasRef, mode, { opacity }, onLoad, onCursor, onSelect) {
     const that = this;
     // 获取画板元素及上下文对象
     this.canvas = canvasRef.current;
@@ -104,6 +105,7 @@ export default {
     this.pen.opacity = opacity;
     this.onLoad = onLoad;
     this.onCursor = onCursor;
+    this.onSelect = onSelect;
     // 从 URL hash 中解析三维坐标
     this.parseHash();
 
@@ -336,28 +338,37 @@ export default {
     }
   },
 
-  // 更新 stroke，并计算 stroke 显示区域
+  // 更新 stroke 显示区域
+  updateArea(stroke, { x, y }, { size }) {
+    const r = size / 2;
+    if (!stroke.inf_area) {
+      stroke.inf_area = { x0: x - r, y0: y - r, x1: x + r, y1: y + r };
+    } else {
+      if (x - r < stroke.inf_area.x0) {
+        stroke.inf_area.x0 = x - r;
+      } else if (x + r > stroke.inf_area.x1) {
+        stroke.inf_area.x1 = x + r;
+      }
+      if (y - r < stroke.inf_area.y0) {
+        stroke.inf_area.y0 = y - r;
+      } else if (y + r > stroke.inf_area.y1) {
+        stroke.inf_area.y1 = y + r;
+      }
+    }
+  },
+
+  // 更新 stroke
   updateStroke(strokeId, drawing, draft) {
     const stroke = this.drawings.get(strokeId) || [];
 
-    const { beginPoint: { x, y } } = drawing;
-    if (!stroke.inf_area) {
-      stroke.inf_area = { x0: x, y0: y, x1: x, y1: y };
-    } else {
-      if (x < stroke.inf_area.x0) {
-        stroke.inf_area.x0 = x;
-      } else if (x > stroke.inf_area.x1) {
-        stroke.inf_area.x1 = x;
-      }
-      if (y < stroke.inf_area.y0) {
-        stroke.inf_area.y0 = y;
-      } else if (y > stroke.inf_area.y1) {
-        stroke.inf_area.y1 = y;
-      }
-    }
+    const { pen, beginPoint, controlPoint, endPoint } = drawing;
+    this.updateArea(stroke, beginPoint, pen);
+    this.updateArea(stroke, controlPoint, pen);
+    this.updateArea(stroke, endPoint, pen);
 
     stroke.push(drawing);
     if (stroke.length === 1) {
+      stroke.inf_id = strokeId;
       this.strokes.push(strokeId);
       if (draft) {
         this.history.push(strokeId);
@@ -744,7 +755,7 @@ export default {
   // 点击事件处理
   tap(e) {
     if (this.mode === 'select') {
-      const selected = [];
+      let selected;
       const p = this.toLogicPoint({ x: e.pageX, y: e.pageY });
       for (const strokeId of this.strokes) {
         const stroke = this.drawings.get(strokeId);
@@ -752,16 +763,24 @@ export default {
         if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1) {
           for (const { beginPoint, controlPoint, endPoint, pen } of stroke) {
             const { isHit } = measureBezier(beginPoint, controlPoint, endPoint);
-            const distance = Math.min(this.toPen(pen).size, 20);
+            const distance = Math.max(this.toPen(pen).size, 50);
             if (isHit(p, distance)) {
-              selected.push(stroke);
+              selected = stroke;
               break;
             }
           }
         }
+        if (selected) break;
       }
-      for (const { inf_area: { x0, y0, x1, y1 } } of selected) {
-        console.log(this.toX(x0), this.toY(y0), this.toX(x1), this.toY(y1));
+      if (selected) {
+        const { inf_id: strokeId, inf_area: { x0, y0, x1, y1 } } = selected;
+        const left = this.toX(x0);
+        const top = this.toY(y0);
+        const width = this.toX(x1) - left;
+        const height = this.toY(y1) - top;
+        this.onSelect(strokeId, { left, top, width, height });
+      } else {
+        console.log('not select');
       }
     }
   },
@@ -781,5 +800,16 @@ export default {
       });
       this.redraw();
     }
+  },
+
+  delete(strokeId) {
+    this.drawings.delete(strokeId);
+    this.strokes = this.strokes.filter((sid) => sid !== strokeId);
+    this.history = this.history.filter((sid) => sid !== strokeId);
+    // 发送服务器，撤销此笔划
+    this.socket.emit('undo', {
+      id: strokeId
+    });
+    this.redraw();
   }
 };
