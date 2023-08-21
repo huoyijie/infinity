@@ -61,11 +61,11 @@ export default function ({ stroke: { strokeId, box: { left, top, width, height }
 
   return (
     <>
-      <div className="fixed z-[201] bg-slate-800 text-white rounded p-1 flex flex-row gap-2" style={{ left, top: top - 36 }}>
+      <div className="fixed z-[201] bg-slate-800 text-white rounded p-1 flex flex-row gap-3" style={{ left, top: top - 36 }}>
         <div className="cursor-pointer hover:text-slate-300" onClick={onDelete}><Trash /></div>
         <div className={'cursor-move' + (moving ? ' text-red-600 hover:text-red-300' : ' hover:text-slate-300')} onClick={onHandRaised}><HandRaised /></div>
       </div>
-      <div id={`stroke-${strokeId}-selected`} className="fixed z-[100] border-dashed border-2 border-slate-800" style={{ left, top, width, height }}></div>
+      <div id={`stroke-${strokeId}-selected`} className={'fixed z-[100] border-dashed border-2 border-slate-800' + (moving ? ' bg-red-400 opacity-25' : '')} style={{ left, top, width, height }}></div>
       {moving && (
         <div className="fixed z-[200] h-full w-full bg-slate-200 opacity-25" onMouseDown={onMove} onMouseMove={onMoving} onMouseUp={onMoved} onMouseOut={onMoved} onTouchStart={onMove} onTouchMove={onMoving} onTouchEnd={onMoved} onTouchCancel={onMoved}></div>
       )}
