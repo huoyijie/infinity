@@ -124,7 +124,7 @@ io.on('connection', async (socket) => {
     // 广播给其他客户端
     socket.broadcast.emit('move', movement);
     // 放入移动队列
-    moves.push(movement)
+    moves.push(movement);
   });
 
   // 连接断开

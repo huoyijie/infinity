@@ -850,7 +850,7 @@ export default {
     this.redraw();
   },
 
-  moving(strokeId, delta, force) {
+  moving(strokeId, delta) {
     const stroke = this.drawings.get(strokeId);
     const { x, y } = this.toLogicDelta(delta);
     for (const { beginPoint, controlPoint, endPoint } of stroke) {
@@ -866,7 +866,7 @@ export default {
     inf_area.x1 += x;
     inf_area.y0 += y;
     inf_area.y1 += y;
-    redrawSelectBoxWithThrottle({ WB: this, strokeId, force });
+    redrawSelectBoxWithThrottle({ WB: this, strokeId });
     return { x, y };
   },
 
@@ -876,5 +876,6 @@ export default {
       strokeId,
       delta
     });
+    redrawSelectBoxWithThrottle({ WB: this, strokeId, force: true });
   }
 };
