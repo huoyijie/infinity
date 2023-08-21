@@ -34,20 +34,24 @@ setInterval(async () => {
       taskNum--;
     }
 
-    for (const { strokeId, delta: { x, y } } of moves) {
-      taskNum++;
-      await prisma.drawing.updateMany({
-        where: { strokeId },
-        data: {
-          beginPointX: { increment: x },
-          beginPointY: { increment: y },
-          ctrlPointX: { increment: x },
-          ctrlPointY: { increment: y },
-          endPointX: { increment: x },
-          endPointY: { increment: y },
-        }
-      });
-      taskNum--;
+    if (moves.length > 0) {
+      const movements = moves;
+      moves = [];
+      for (const { strokeId, delta: { x, y } } of movements) {
+        taskNum++;
+        await prisma.drawing.updateMany({
+          where: { strokeId },
+          data: {
+            beginPointX: { increment: x },
+            beginPointY: { increment: y },
+            ctrlPointX: { increment: x },
+            ctrlPointY: { increment: y },
+            endPointX: { increment: x },
+            endPointY: { increment: y },
+          }
+        });
+        taskNum--;
+      }
     }
 
     if (drawings.length > 0) {
