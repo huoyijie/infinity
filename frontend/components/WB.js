@@ -26,6 +26,18 @@ const replaceHash = throttle(({ hash }) => location.replace(hash), 100);
 
 const redrawWithThrottle = throttle((WB) => WB.redraw(), 200);
 
+const redrawSelectBoxWithThrottle = throttle(({ WB, strokeId }) => {
+  const { x0, y0, x1, y1 } = WB.drawings.get(strokeId).inf_area;
+  const left = WB.toX(x0);
+  const top = WB.toY(y0);
+  const width = WB.toX(x1) - left;
+  const height = WB.toY(y1) - top;
+  WB.onSelect({
+    strokeId, box: { left, top, width, height }
+  });
+  WB.redraw();
+}, 100);
+
 export default {
   // socket.io 连接句柄
   socket: null,
@@ -474,6 +486,10 @@ export default {
     return { x: this.toLogicX(x), y: this.toLogicY(y) };
   },
 
+  toLogicDelta({ x, y }) {
+    return { x: x / this.scale, y: y / this.scale };
+  },
+
   // 逻辑画板高度
   logicHeight() {
     return this.canvas.height / this.scale;
@@ -817,5 +833,24 @@ export default {
       id: strokeId
     });
     this.redraw();
+  },
+
+  moving(strokeId, delta, force) {
+    const stroke = this.drawings.get(strokeId);
+    const { x, y } = this.toLogicDelta(delta);
+    for (const { beginPoint, controlPoint, endPoint } of stroke) {
+      beginPoint.x += x;
+      beginPoint.y += y;
+      controlPoint.x += x;
+      controlPoint.y += y;
+      endPoint.x += x;
+      endPoint.y += y;
+    }
+    const { inf_area } = stroke;
+    inf_area.x0 += x;
+    inf_area.x1 += x;
+    inf_area.y0 += y;
+    inf_area.y1 += y;
+    redrawSelectBoxWithThrottle({ WB: this, strokeId, force });
   }
 };
