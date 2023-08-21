@@ -5,25 +5,32 @@ import WBContext from './WBContext';
 export default function ({ stroke: { strokeId, box: { left, top, width, height } }, setSelectedStroke }) {
   const [moving, setMoving] = useState(false);
   const position = useRef(null);
+  const delta = useRef({ x: 0, y: 0 });
   const WB = useContext(WBContext);
   const onDelete = () => {
     setTimeout(() => WB.delete(strokeId), 10);
     setSelectedStroke(null);
   };
   const onMove = (e) => {
-    setMoving(true);
     position.current = { x: e.pageX, y: e.pageY };
+    setMoving(true);
   };
   const onMoving = (e) => {
     const { x, y } = position.current;
-    WB.moving(strokeId, { x: e.pageX - x, y: e.pageY - y });
+    const { x: deltaX, y: deltaY } = WB.moving(strokeId, { x: e.pageX - x, y: e.pageY - y });
+    delta.current.x += deltaX;
+    delta.current.y += deltaY;
     position.current = { x: e.pageX, y: e.pageY };
   };
   const onMoved = (e) => {
     const { x, y } = position.current;
-    WB.moving(strokeId, { x: e.pageX - x, y: e.pageY - y }, true);
-    setMoving(false);
+    const { x: deltaX, y: deltaY } = WB.moving(strokeId, { x: e.pageX - x, y: e.pageY - y }, true);
+    delta.current.x += deltaX;
+    delta.current.y += deltaY;
+    WB.moved(strokeId, delta.current);
     position.current = null;
+    delta.current = { x: 0, y: 0 };
+    setMoving(false);
   }
   return (
     <>

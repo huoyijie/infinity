@@ -12,6 +12,7 @@ const prisma = new PrismaClient();
 var taskNum = 0;
 var drawings = [];
 var undos = [];
+var moves = [];
 setInterval(async () => {
   // 最多同时存在 5 个写数据库任务，最多占据 5 个数据库连接
   if (taskNum < 5) {
@@ -28,6 +29,22 @@ setInterval(async () => {
           strokeId: {
             in: strokeIds
           }
+        }
+      });
+      taskNum--;
+    }
+
+    for (const { strokeId, delta: { x, y } } of moves) {
+      taskNum++;
+      await prisma.drawing.updateMany({
+        where: { strokeId },
+        data: {
+          beginPointX: { increment: x },
+          beginPointY: { increment: y },
+          ctrlPointX: { increment: x },
+          ctrlPointY: { increment: y },
+          endPointX: { increment: x },
+          endPointY: { increment: y },
         }
       });
       taskNum--;
@@ -100,6 +117,14 @@ io.on('connection', async (socket) => {
     socket.broadcast.emit('undo', stroke);
     // 放入撤销队列
     undos.push(stroke.id);
+  });
+
+  // 移动笔划
+  socket.on('move', (movement) => {
+    // 广播给其他客户端
+    socket.broadcast.emit('move', movement);
+    // 放入移动队列
+    moves.push(movement)
   });
 
   // 连接断开

@@ -150,15 +150,11 @@ export default {
       parser: msgpackParser,
       path: path.join(basePath, 'socket.io')
     });
-    this.socket.on('drawings', (drawings) => {
-      that.onRecvDrawings(drawings);
-    });
-    this.socket.on('drawing', (drawing) => {
-      that.onRecvDrawing(drawing);
-    })
-    this.socket.on('undo', (stroke) => {
-      that.onUndo(stroke);
-    });
+    this.socket
+      .on('drawings', (drawings) => that.onRecvDrawings(drawings))
+      .on('drawing', (drawing) => that.onRecvDrawing(drawing))
+      .on('undo', (stroke) => that.onUndo(stroke))
+      .on('move', (movement) => that.onMove(movement));
 
     // window resize, redraw
     window.onresize = () => that.redraw();
@@ -425,6 +421,25 @@ export default {
   onUndo(stroke) {
     this.drawings.delete(stroke.id);
     this.strokes = this.strokes.filter((strokeId) => strokeId !== stroke.id);
+    this.redraw();
+  },
+
+  // 收到远程移动笔划
+  onMove({ strokeId, delta: { x, y } }) {
+    const stroke = this.drawings.get(strokeId);
+    for (const { beginPoint, controlPoint, endPoint } of stroke) {
+      beginPoint.x += x;
+      beginPoint.y += y;
+      controlPoint.x += x;
+      controlPoint.y += y;
+      endPoint.x += x;
+      endPoint.y += y;
+    }
+    const { inf_area } = stroke;
+    inf_area.x0 += x;
+    inf_area.x1 += x;
+    inf_area.y0 += y;
+    inf_area.y1 += y;
     this.redraw();
   },
 
@@ -852,5 +867,14 @@ export default {
     inf_area.y0 += y;
     inf_area.y1 += y;
     redrawSelectBoxWithThrottle({ WB: this, strokeId, force });
+    return { x, y };
+  },
+
+  moved(strokeId, delta) {
+    // 发送服务器，移动此笔划
+    this.socket.emit('move', {
+      strokeId,
+      delta
+    });
   }
 };
