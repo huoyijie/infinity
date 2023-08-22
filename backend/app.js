@@ -13,6 +13,7 @@ var taskNum = 0;
 var drawings = [];
 var undos = [];
 var moves = [];
+var copies = [];
 setInterval(async () => {
   // 最多同时存在 5 个写数据库任务，最多占据 5 个数据库连接
   if (taskNum < 5) {
@@ -49,6 +50,31 @@ setInterval(async () => {
             endPointX: { increment: x },
             endPointY: { increment: y },
           }
+        });
+        taskNum--;
+      }
+    }
+
+    if (copies.length > 0) {
+      const copyList = copies;
+      copies = [];
+      for (const { strokeId, newStrokeId } of copyList) {
+        taskNum++;
+        const drawings = await prisma.drawing.findMany({
+          where: { strokeId },
+          orderBy: [{ id: 'asc' }],
+        });
+        taskNum--;
+
+        for (const drawing of drawings) {
+          delete drawing.id;
+          drawing.strokeId = newStrokeId;
+        }
+
+        taskNum++;
+        await prisma.drawing.createMany({
+          data: drawings,
+          skipDuplicates: true,
         });
         taskNum--;
       }
@@ -92,49 +118,54 @@ io.on('connection', async (socket) => {
     orderBy: [{ id: 'asc' }],
   }));
 
-  // 收到新笔划
-  socket.on('drawing', (drawing) => {
-    // 广播给其他客户端
-    socket.broadcast.emit('drawing', drawing);
-    // 写入队列，然后异步写入数据库
-    if (!drawing.end) {
-      const { strokeId, pen, beginPoint, controlPoint, endPoint } = drawing;
-      const { color, opacity, size } = pen;
-      drawings.push({
-        strokeId,
-        color,
-        opacity,
-        size,
-        beginPointX: beginPoint.x,
-        beginPointY: beginPoint.y,
-        ctrlPointX: controlPoint.x,
-        ctrlPointY: controlPoint.y,
-        endPointX: endPoint.x,
-        endPointY: endPoint.y,
-      });
-    }
-  });
-
-  // 撤销笔划
-  socket.on('undo', (stroke) => {
-    // 广播给其他客户端
-    socket.broadcast.emit('undo', stroke);
-    // 放入撤销队列
-    undos.push(stroke.id);
-  });
-
-  // 移动笔划
-  socket.on('move', (movement) => {
-    // 广播给其他客户端
-    socket.broadcast.emit('move', movement);
-    // 放入移动队列
-    moves.push(movement);
-  });
-
-  // 连接断开
-  socket.on('disconnect', () => {
-    console.log(socket.id, 'disconnect');
-  });
+  socket
+    // 收到新笔划
+    .on('drawing', (drawing) => {
+      // 广播给其他客户端
+      socket.broadcast.emit('drawing', drawing);
+      // 写入队列，然后异步写入数据库
+      if (!drawing.end) {
+        const { strokeId, pen, beginPoint, controlPoint, endPoint } = drawing;
+        const { color, opacity, size } = pen;
+        drawings.push({
+          strokeId,
+          color,
+          opacity,
+          size,
+          beginPointX: beginPoint.x,
+          beginPointY: beginPoint.y,
+          ctrlPointX: controlPoint.x,
+          ctrlPointY: controlPoint.y,
+          endPointX: endPoint.x,
+          endPointY: endPoint.y,
+        });
+      }
+    })
+    // 撤销笔划
+    .on('undo', (stroke) => {
+      // 广播给其他客户端
+      socket.broadcast.emit('undo', stroke);
+      // 放入撤销队列
+      undos.push(stroke.id);
+    })
+    // 移动笔划
+    .on('move', (movement) => {
+      // 广播给其他客户端
+      socket.broadcast.emit('move', movement);
+      // 放入移动队列
+      moves.push(movement);
+    })
+    // 复制笔划
+    .on('copy', ({ strokeId, newStrokeId }) => {
+      // 广播给其他客户端
+      socket.broadcast.emit('copy', { strokeId, newStrokeId });
+      // 放入复制队列
+      copies.push({ strokeId, newStrokeId });
+    })
+    // 连接断开
+    .on('disconnect', () => {
+      console.log(socket.id, 'disconnect');
+    });
 });
 
 const port = process.env.PORT || 5000;

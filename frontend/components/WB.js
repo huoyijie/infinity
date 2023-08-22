@@ -154,7 +154,8 @@ export default {
       .on('drawings', (drawings) => that.onRecvDrawings(drawings))
       .on('drawing', (drawing) => that.onRecvDrawing(drawing))
       .on('undo', (stroke) => that.onUndo(stroke))
-      .on('move', (movement) => that.onMove(movement));
+      .on('move', (movement) => that.onMove(movement))
+      .on('copy', ({ strokeId, newStrokeId }) => that.copy(strokeId, newStrokeId));
 
     // window resize, redraw
     window.onresize = () => that.redraw();
@@ -877,5 +878,29 @@ export default {
       delta
     });
     redrawSelectBoxWithThrottle({ WB: this, strokeId, force: true });
+  },
+
+  copy(strokeId, copiedStrokeId) {
+    const stroke = this.drawings.get(strokeId);
+
+    const copied = [];
+    copied.inf_id = copiedStrokeId || newStrokeId();
+    copied.inf_area = { ...stroke.inf_area };
+
+    for (const { pen, beginPoint, controlPoint, endPoint } of stroke) {
+      copied.push({
+        pen: { ...pen },
+        beginPoint: { ...beginPoint },
+        controlPoint: { ...controlPoint },
+        endPoint: { ...endPoint },
+      });
+    }
+
+    this.drawings.set(copied.inf_id, copied);
+    this.strokes.push(copied.inf_id);
+    if (!copiedStrokeId) {
+      // 发送服务器，复制此笔划
+      this.socket.emit('copy', { strokeId, newStrokeId: copied.inf_id });
+    }
   }
 };
