@@ -14,6 +14,7 @@ var drawings = [];
 var undos = [];
 var moves = [];
 var copies = [];
+var zooms = [];
 setInterval(async () => {
   // 最多同时存在 5 个写数据库任务，最多占据 5 个数据库连接
   if (taskNum < 5) {
@@ -76,6 +77,38 @@ setInterval(async () => {
           data: drawings,
           skipDuplicates: true,
         });
+        taskNum--;
+      }
+    }
+
+    if (zooms.length > 0) {
+      const zoomList = zooms;
+      zooms = [];
+      for (const { strokeId, scale, delta: { x, y } } of zoomList) {
+        taskNum++;
+        const scaled = prisma.drawing.updateMany({
+          where: { strokeId },
+          data: {
+            beginPointX: { multiply: scale },
+            beginPointY: { multiply: scale },
+            ctrlPointX: { multiply: scale },
+            ctrlPointY: { multiply: scale },
+            endPointX: { multiply: scale },
+            endPointY: { multiply: scale },
+          }
+        });
+        const processDelta = prisma.drawing.updateMany({
+          where: { strokeId },
+          data: {
+            beginPointX: { decrement: x },
+            beginPointY: { decrement: y },
+            ctrlPointX: { decrement: x },
+            ctrlPointY: { decrement: y },
+            endPointX: { decrement: x },
+            endPointY: { decrement: y },
+          }
+        });
+        await prisma.$transaction([scaled, processDelta]);
         taskNum--;
       }
     }
@@ -161,6 +194,12 @@ io.on('connection', async (socket) => {
       socket.broadcast.emit('copy', { strokeId, newStrokeId });
       // 放入复制队列
       copies.push({ strokeId, newStrokeId });
+    })
+    // 缩放笔划
+    .on('zoom', (zoom) => {
+      // 广播给其他客户端
+      socket.broadcast.emit('zoom', zoom);
+      zooms.push(zoom);
     })
     // 连接断开
     .on('disconnect', () => {

@@ -26,15 +26,17 @@ const replaceHash = throttle(({ hash }) => location.replace(hash), 100);
 
 const redrawWithThrottle = throttle((WB) => WB.redraw(), 200);
 
-const redrawSelectBoxWithThrottle = throttle(({ WB, strokeId }) => {
-  const { x0, y0, x1, y1 } = WB.drawings.get(strokeId).inf_area;
-  const left = WB.toX(x0);
-  const top = WB.toY(y0);
-  const width = WB.toX(x1) - left;
-  const height = WB.toY(y1) - top;
-  WB.onSelect({
-    strokeId, box: { left, top, width, height }
-  });
+const redrawSelectBoxWithThrottle = throttle(({ WB, strokeId, source }) => {
+  if (source) {
+    const { x0, y0, x1, y1 } = WB.drawings.get(strokeId).inf_area;
+    const left = WB.toX(x0);
+    const top = WB.toY(y0);
+    const width = WB.toX(x1) - left;
+    const height = WB.toY(y1) - top;
+    WB.onSelect({
+      strokeId, box: { left, top, width, height }
+    });
+  }
   WB.redraw();
 }, 100);
 
@@ -155,7 +157,8 @@ export default {
       .on('drawing', (drawing) => that.onRecvDrawing(drawing))
       .on('undo', (stroke) => that.onUndo(stroke))
       .on('move', (movement) => that.onMove(movement))
-      .on('copy', ({ strokeId, newStrokeId }) => that.copy(strokeId, newStrokeId));
+      .on('copy', ({ strokeId, newStrokeId }) => that.copy(strokeId, newStrokeId))
+      .on('zoom', ({ strokeId, scale }) => that.zoom(strokeId, scale));
 
     // window resize, redraw
     window.onresize = () => that.redraw();
@@ -426,21 +429,8 @@ export default {
   },
 
   // 收到远程移动笔划
-  onMove({ strokeId, delta: { x, y } }) {
-    const stroke = this.drawings.get(strokeId);
-    for (const { beginPoint, controlPoint, endPoint } of stroke) {
-      beginPoint.x += x;
-      beginPoint.y += y;
-      controlPoint.x += x;
-      controlPoint.y += y;
-      endPoint.x += x;
-      endPoint.y += y;
-    }
-    const { inf_area } = stroke;
-    inf_area.x0 += x;
-    inf_area.x1 += x;
-    inf_area.y0 += y;
-    inf_area.y1 += y;
+  onMove(movement) {
+    this.move(movement);
     this.redraw();
   },
 
@@ -851,9 +841,8 @@ export default {
     this.redraw();
   },
 
-  moving(strokeId, delta) {
+  move({ strokeId, delta: { x, y } }) {
     const stroke = this.drawings.get(strokeId);
-    const { x, y } = this.toLogicDelta(delta);
     for (const { beginPoint, controlPoint, endPoint } of stroke) {
       beginPoint.x += x;
       beginPoint.y += y;
@@ -867,7 +856,12 @@ export default {
     inf_area.x1 += x;
     inf_area.y0 += y;
     inf_area.y1 += y;
-    redrawSelectBoxWithThrottle({ WB: this, strokeId });
+  },
+
+  moving(strokeId, delta) {
+    const { x, y } = this.toLogicDelta(delta);
+    this.move({ strokeId, delta: { x, y } });
+    redrawSelectBoxWithThrottle({ WB: this, strokeId, source: true });
     return { x, y };
   },
 
@@ -877,7 +871,7 @@ export default {
       strokeId,
       delta
     });
-    redrawSelectBoxWithThrottle({ WB: this, strokeId, force: true });
+    redrawSelectBoxWithThrottle({ WB: this, strokeId, source: true, force: true });
   },
 
   copy(strokeId, copiedStrokeId) {
@@ -902,5 +896,46 @@ export default {
       // 发送服务器，复制此笔划
       this.socket.emit('copy', { strokeId, newStrokeId: copied.inf_id });
     }
+  },
+
+  zoom(strokeId, scale, source) {
+    const stroke = this.drawings.get(strokeId);
+    const { inf_area } = stroke;
+    const deltaX = (scale - 1) * inf_area.x0;
+    const deltaY = (scale - 1) * inf_area.y0;
+    inf_area.x0 *= scale;
+    inf_area.x0 -= deltaX;
+    inf_area.x1 *= scale;
+    inf_area.x1 -= deltaX;
+    inf_area.y0 *= scale;
+    inf_area.y0 -= deltaY;
+    inf_area.y1 *= scale;
+    inf_area.y1 -= deltaY;
+
+    for (const { beginPoint, controlPoint, endPoint } of stroke) {
+      beginPoint.x *= scale;
+      beginPoint.x -= deltaX;
+      beginPoint.y *= scale;
+      beginPoint.y -= deltaY;
+      controlPoint.x *= scale;
+      controlPoint.x -= deltaX;
+      controlPoint.y *= scale;
+      controlPoint.y -= deltaY;
+      endPoint.x *= scale;
+      endPoint.x -= deltaX;
+      endPoint.y *= scale;
+      endPoint.y -= deltaY;
+    }
+
+    source && this.socket.emit('zoom', { strokeId, scale, delta: { x: deltaX, y: deltaY } });
+    redrawSelectBoxWithThrottle({ WB: this, strokeId, source, force: true });
+  },
+
+  zoomIn(strokeId) {
+    this.zoom(strokeId, 1.1, true);
+  },
+
+  zoomOut(strokeId) {
+    this.zoom(strokeId, 1 / 1.1, true);
   }
 };
