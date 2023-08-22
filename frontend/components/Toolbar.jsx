@@ -38,7 +38,7 @@ export default function ({ mode, setMode }) {
   WB.onCanUndo = (canUndo) => setCanUndo(canUndo);
 
   return (
-    <div className="fixed z-50 top-8 left-5 flex flex-col gap-y-2 text-slate-900">
+    <div className="fixed z-[300] top-8 left-5 flex flex-col gap-y-2 text-slate-900">
       <Button Icon={showToolbar ? BarsUp : BarsDown} onClick={() => setShowToolbar(!showToolbar)} />
       <div className={'flex flex-col gap-y-2' + (!showToolbar ? ' hidden': '')}>
         <SettingContext.Provider value={{ setShowColors, setShowOpacity, setShowPencilSetting, setShowHelp, resetAll }}>
