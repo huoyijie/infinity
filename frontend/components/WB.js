@@ -40,6 +40,11 @@ const redrawSelectBoxWithThrottle = throttle(({ WB, strokeId, source }) => {
   WB.redraw();
 }, 100);
 
+const redrawMultiSelectBoxWithThrottle = throttle(({ WB, strokeIds, dragging, source }) => {
+  source && WB.onMultiSelect({ strokeIds, box: WB.selectionBox, dragging });
+  WB.redraw();
+}, 100);
+
 export default {
   // socket.io 连接句柄
   socket: null,
@@ -56,6 +61,7 @@ export default {
   onLoad: () => { },
   onCursor: () => { },
   onSelect: () => { },
+  onMultiSelect: () => { },
   onClick: () => { },
   onCanUndo: () => { },
 
@@ -99,8 +105,10 @@ export default {
     initialPoint: { x: 0, y: 0 }
   }),
 
+  selectionBox: null,
+
   // 初始化画板
-  init(canvasRef, draftCanvasRef, lbCanvasRef, mode, { opacity }, onLoad, onCursor, onSelect) {
+  init(canvasRef, draftCanvasRef, lbCanvasRef, mode, { opacity }, onLoad, onCursor, onSelect, onMultiSelect) {
     const that = this;
     // 获取画板元素及上下文对象
     this.canvas = canvasRef.current;
@@ -120,6 +128,7 @@ export default {
     this.onLoad = onLoad;
     this.onCursor = onCursor;
     this.onSelect = onSelect;
+    this.onMultiSelect = onMultiSelect;
     // 从 URL hash 中解析三维坐标
     this.parseHash();
 
@@ -156,9 +165,10 @@ export default {
       .on('drawings', (drawings) => that.onRecvDrawings(drawings))
       .on('drawing', (drawing) => that.onRecvDrawing(drawing))
       .on('undo', (stroke) => that.onUndo(stroke))
+      .on('delete', (strokes) => that.onDelete(strokes))
       .on('move', (movement) => that.onMove(movement))
       .on('copy', ({ strokeId, newStrokeId }) => that.copy(strokeId, newStrokeId))
-      .on('zoom', ({ strokeId, scale }) => that.zoom(strokeId, scale));
+      .on('zoom', ({ strokeId, scale }) => that.redrawWithZoom(strokeId, scale));
 
     // window resize, redraw
     window.onresize = () => that.redraw();
@@ -428,6 +438,11 @@ export default {
     this.redraw();
   },
 
+  // 收到远程删除笔划
+  onDelete({ ids: strokeIds }) {
+    this.delete(strokeIds);
+  },
+
   // 收到远程移动笔划
   onMove(movement) {
     this.move(movement);
@@ -463,6 +478,10 @@ export default {
 
   toPoint({ x, y }) {
     return { x: this.toX(x), y: this.toY(y) };
+  },
+
+  toDelta({ x, y }) {
+    return { x: x * this.scale, y: y * this.scale };
   },
 
   toPenSize(size) {
@@ -540,8 +559,8 @@ export default {
     const cursorX = e.pageX;
     const cursorY = e.pageY;
 
-    // draw 涂鸦模式
-    if (this.lazyBrush.update({ x: e.pageX, y: e.pageY }) && this.isDrawOrEraseMode() && this.leftMouseDown) {
+    // draw/erase 涂鸦/涂改模式
+    if (this.lazyBrush.update({ x: cursorX, y: cursorY }) && this.isDrawOrEraseMode() && this.leftMouseDown) {
       this.points.push(this.lazyBrush.getBrushCoordinates());
       if (this.points.length >= 3) {
         // 绘制笔划
@@ -570,6 +589,9 @@ export default {
       }
     }
 
+    // 画 brush
+    this.drawBrush();
+
     // move 移动模式
     if (this.mode === 'move' && this.leftMouseDown) {
       this.offsetX += (cursorX - this.prevCursorX) / this.scale;
@@ -579,12 +601,22 @@ export default {
       redrawWithThrottle(this);
     }
 
-    // 画 brush
-    this.drawBrush();
-
-    // 更新移动前鼠标坐标为最新值
-    this.prevCursorX = cursorX;
-    this.prevCursorY = cursorY;
+    if (this.mode === 'select') {
+      if (this.leftMouseDown) {
+        const left = cursorX <= this.prevCursorX ? cursorX : this.prevCursorX;
+        const top = cursorY <= this.prevCursorY ? cursorY : this.prevCursorY;
+        const width = Math.abs(cursorX - this.prevCursorX);
+        const height = Math.abs(cursorY - this.prevCursorY);
+        if (width >= 10 && height >= 10) {
+          this.selectionBox = { left, top, width, height };
+          this.onMultiSelect({ dragging: true, box: this.selectionBox });
+        }
+      }
+    } else {
+      // 更新移动前鼠标坐标为最新值
+      this.prevCursorX = cursorX;
+      this.prevCursorY = cursorY;
+    }
   },
 
   mouseUp() {
@@ -604,6 +636,22 @@ export default {
         this.points = [];
       } else if (this.mode === 'move') {
         this.updateHash();
+      } else if (this.mode === 'select') {
+        const box = this.selectionBox;
+        if (box) {
+          const { left, top, width, height } = box;
+          const p0 = this.toLogicPoint({ x: left, y: top });
+          const p1 = this.toLogicPoint({ x: left + width, y: top + height });
+
+          const strokeIds = [];
+          for (const strokeId of this.strokes) {
+            const { inf_area: { x0, y0, x1, y1 } } = this.drawings.get(strokeId);
+            if (p0.x <= x0 && x1 <= p1.x && p0.y <= y0 && y1 <= p1.y) {
+              strokeIds.push(strokeId);
+            }
+          }
+          this.onMultiSelect(strokeIds.length > 0 ? { strokeIds, box } : null);
+        }
       }
       this.leftMouseDown = false;
     }
@@ -614,6 +662,7 @@ export default {
   mouseWheel(e) {
     this.onClick();
     this.onSelect(null);
+    this.onMultiSelect(null);
     const scaleAmount = this.thresholdingWheelScale(-e.deltaY / 4800);
 
     // 基于鼠标箭头位置决定怎样伸缩
@@ -644,6 +693,7 @@ export default {
     this.doubleTouch = e.touches.length > 1;
     if (this.doubleTouch) {
       this.onSelect(null);
+      this.onMultiSelect(null);
     }
     // 只记录 2 个触点坐标
     this.prevTouches[0] = e.touches[0];
@@ -666,7 +716,7 @@ export default {
     const prevTouch0X = this.prevTouches[0].pageX;
     const prevTouch0Y = this.prevTouches[0].pageY;
 
-    // draw 涂鸦模式
+    // draw/erase 涂鸦/涂改模式
     if (this.lazyBrush.update({ x: touch0X, y: touch0Y }) && this.isDrawOrEraseMode() && this.singleTouch) {
       this.points.push(this.lazyBrush.getBrushCoordinates());
       if (this.points.length >= 3) {
@@ -751,28 +801,60 @@ export default {
       this.drawBrush(true);
     }
 
-    // 更新触点坐标
-    this.prevTouches[0] = e.touches[0];
-    this.prevTouches[1] = e.touches[1];
+    if (this.mode === 'select') {
+      if (this.singleTouch) {
+        const left = touch0X <= prevTouch0X ? touch0X : prevTouch0X;
+        const top = touch0Y <= prevTouch0Y ? touch0Y : prevTouch0Y;
+        const width = Math.abs(touch0X - prevTouch0X);
+        const height = Math.abs(touch0Y - prevTouch0Y);
+        if (width >= 10 && height >= 10) {
+          this.selectionBox = { left, top, width, height };
+          this.onMultiSelect({ dragging: true, box: this.selectionBox });
+        }
+      }
+    } else {
+      // 更新触点坐标
+      this.prevTouches[0] = e.touches[0];
+      this.prevTouches[1] = e.touches[1];
+    }
   },
 
   touchEnd() {
     if (this.singleTouch) {
-      // 发送笔划结束，不包含画笔和数据
-      this.socket.emit('drawing', {
-        strokeId: this.currentStroke,
-        end: true,
-      });
-      this.copyFromDraft({ isErase: this.isErase() });
-      if (this.isErase()) {
-        this.setDraftOpacity();
+      if (this.isDrawOrEraseMode()) {
+        // 发送笔划结束，不包含画笔和数据
+        this.socket.emit('drawing', {
+          strokeId: this.currentStroke,
+          end: true,
+        });
+        this.copyFromDraft({ isErase: this.isErase() });
+        if (this.isErase()) {
+          this.setDraftOpacity();
+        }
+        this.currentStroke = null;
+        this.beginPoint = null;
+        this.points = [];
+      } else if (this.mode === 'move') {
+        this.updateHash();
+      } else if (this.mode === 'select') {
+        const box = this.selectionBox;
+        if (box) {
+          const { left, top, width, height } = box;
+          const p0 = this.toLogicPoint({ x: left, y: top });
+          const p1 = this.toLogicPoint({ x: left + width, y: top + height });
+
+          const strokeIds = [];
+          for (const strokeId of this.strokes) {
+            const { inf_area: { x0, y0, x1, y1 } } = this.drawings.get(strokeId);
+            if (p0.x <= x0 && x1 <= p1.x && p0.y <= y0 && y1 <= p1.y) {
+              strokeIds.push(strokeId);
+            }
+          }
+          this.onMultiSelect(strokeIds.length > 0 ? { strokeIds, box } : null);
+        }
       }
       this.singleTouch = false;
-      this.currentStroke = null;
-      this.beginPoint = null;
-      this.points = [];
     } else {
-      this.updateHash();
       this.doubleTouch = false;
     }
   },
@@ -830,14 +912,16 @@ export default {
     }
   },
 
-  delete(strokeId) {
-    this.drawings.delete(strokeId);
-    this.strokes = this.strokes.filter((sid) => sid !== strokeId);
-    this.history = this.history.filter((sid) => sid !== strokeId);
-    // 发送服务器，撤销此笔划
-    this.socket.emit('undo', {
-      id: strokeId
-    });
+  delete(strokeIds, source) {
+    strokeIds.forEach((strokeId) => this.drawings.delete(strokeId));
+    this.strokes = this.strokes.filter((strokeId) => !strokeIds.includes(strokeId));
+    if (source) {
+      this.history = this.history.filter((strokeId) => !strokeIds.includes(strokeId));
+      // 发送服务器，撤销此笔划
+      this.socket.emit('delete', {
+        ids: strokeIds
+      });
+    }
     this.redraw();
   },
 
@@ -865,6 +949,15 @@ export default {
     return { x, y };
   },
 
+  multiMoving(strokeIds, delta) {
+    const logicDelta = this.toLogicDelta(delta);
+    strokeIds.forEach((strokeId) => this.move({ strokeId, delta: logicDelta }));
+    this.selectionBox.left += delta.x;
+    this.selectionBox.top += delta.y;
+    redrawMultiSelectBoxWithThrottle({ WB: this, strokeIds, dragging: true, source: true });
+    return logicDelta;
+  },
+
   moved(strokeId, delta) {
     // 发送服务器，移动此笔划
     this.socket.emit('move', {
@@ -872,6 +965,15 @@ export default {
       delta
     });
     redrawSelectBoxWithThrottle({ WB: this, strokeId, source: true, force: true });
+  },
+
+  multiMoved(strokeIds, delta) {
+    // 发送服务器，移动笔划
+    strokeIds.forEach((strokeId) => this.socket.emit('move', {
+      strokeId,
+      delta
+    }));
+    redrawMultiSelectBoxWithThrottle({ WB: this, strokeIds, source: true, force: true });
   },
 
   copy(strokeId, copiedStrokeId) {
@@ -896,6 +998,10 @@ export default {
       // 发送服务器，复制此笔划
       this.socket.emit('copy', { strokeId, newStrokeId: copied.inf_id });
     }
+  },
+
+  multiCopy(strokeIds) {
+    strokeIds.forEach((strokeId) => this.copy(strokeId));
   },
 
   zoom(strokeId, scale, source) {
@@ -926,16 +1032,45 @@ export default {
       endPoint.y *= scale;
       endPoint.y -= deltaY;
     }
-
     source && this.socket.emit('zoom', { strokeId, scale, delta: { x: deltaX, y: deltaY } });
+  },
+
+  redrawWithZoom(strokeId, scale, source) {
+    this.zoom(strokeId, scale, source);
     redrawSelectBoxWithThrottle({ WB: this, strokeId, source, force: true });
   },
 
   zoomIn(strokeId) {
-    this.zoom(strokeId, 1.1, true);
+    this.redrawWithZoom(strokeId, 1.1, true);
   },
 
   zoomOut(strokeId) {
-    this.zoom(strokeId, 1 / 1.1, true);
+    this.redrawWithZoom(strokeId, 1 / 1.1, true);
+  },
+
+  zoomSelectionBox(scale) {
+    const { left, top } = this.selectionBox;
+    const deltaX = (scale - 1) * left;
+    const deltaY = (scale - 1) * top;
+    this.selectionBox.left *= scale;
+    this.selectionBox.left -= deltaX;
+    this.selectionBox.top *= scale;
+    this.selectionBox.top -= deltaY;
+    this.selectionBox.width *= scale;
+    this.selectionBox.height *= scale;
+  },
+
+  multiZoom(strokeIds, scale) {
+    strokeIds.forEach((strokeId) => this.zoom(strokeId, scale, true));
+    this.zoomSelectionBox(scale);
+    redrawMultiSelectBoxWithThrottle({ WB: this, strokeIds, source: true, force: true });
+  },
+
+  multiZoomIn(strokeIds) {
+    this.multiZoom(strokeIds, 1.1);
+  },
+
+  multiZoomOut(strokeIds) {
+    this.multiZoom(strokeIds, 1 / 1.1);
   }
 };

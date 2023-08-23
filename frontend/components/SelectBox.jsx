@@ -6,7 +6,7 @@ import Copy from './assets/Copy';
 import MagnifyingGlassMinus from './assets/MagnifyingGlassMinus';
 import MagnifyingGlassPlus from './assets/MagnifyingGlassPlus';
 
-export default function ({ stroke: { strokeId, box: { left, top, width, height } }, setSelectedStroke }) {
+export default function ({ selectedStroke: { strokeId, box: { left, top, width, height } }, setSelectedStroke }) {
   const WB = useContext(WBContext);
   const [moving, setMoving] = useState(false);
   const movingPos = useRef(null);
@@ -15,7 +15,7 @@ export default function ({ stroke: { strokeId, box: { left, top, width, height }
 
   const onDelete = () => {
     setSelectedStroke(null);
-    setTimeout(() => WB.delete(strokeId), 10);
+    setTimeout(() => WB.delete([strokeId], true), 10);
   };
 
   const onCopy = () => {
@@ -28,9 +28,7 @@ export default function ({ stroke: { strokeId, box: { left, top, width, height }
 
   const onZoomOut = () => WB.zoomOut(strokeId);
 
-  const onHandRaised = () => {
-    setMoving(!moving);
-  };
+  const onHandRaised = () => setMoving(!moving);
 
   const onMove = (e) => {
     let s = e;
@@ -75,7 +73,7 @@ export default function ({ stroke: { strokeId, box: { left, top, width, height }
       </div>
       <div id={`stroke-${strokeId}-selected`} className={'fixed z-[100] border-dashed border-2 border-slate-800 flex justify-center items-center' + (moving || hint ? ' bg-red-400 opacity-50' : '')} style={{ left, top, width, height }}>
         {hint && (
-          <span className="text-4xl text-black">{hint}</span>
+          <span className="text-2xl text-black">{hint}</span>
         )}
       </div>
       {moving && (

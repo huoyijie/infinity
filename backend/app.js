@@ -181,6 +181,13 @@ io.on('connection', async (socket) => {
       // 放入撤销队列
       undos.push(stroke.id);
     })
+    // 删除笔划
+    .on('delete', (strokes) => {
+      // 广播给其他客户端
+      socket.broadcast.emit('delete', strokes);
+      // 放入撤销队列
+      undos.push(...strokes.ids);
+    })
     // 移动笔划
     .on('move', (movement) => {
       // 广播给其他客户端

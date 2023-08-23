@@ -5,6 +5,7 @@ import WBContext from './WBContext';
 import OpacityContext from './OpacityContext';
 import Spinner from './Spinner';
 import SelectBox from './SelectBox';
+import MultiSelectBox from './MultiSelectBox';
 
 function WhiteBoard() {
   const canvasRef = useRef(null);
@@ -15,6 +16,7 @@ function WhiteBoard() {
   const [opacity, setOpacity] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedStroke, setSelectedStroke] = useState(null);
+  const [selectedStrokes, setSelectedStrokes] = useState(null);
 
   // 启动 socket 连接，初始化共享画板组件
   useEffect(() => {
@@ -30,7 +32,8 @@ function WhiteBoard() {
       { opacity },
       () => setLoading(false),
       (cursor) => setCursor(cursor),
-      (stroke) => setSelectedStroke(stroke));
+      (stroke) => setSelectedStroke(stroke),
+      (strokes) => setSelectedStrokes(strokes));
     return () => WB.close();
   }, []);
 
@@ -61,10 +64,15 @@ function WhiteBoard() {
             setMode(mode);
             localStorage.setItem('mode', mode);
             setSelectedStroke(null);
+            setSelectedStrokes(null);
+            WB.selectionBox = null;
           }} />
         </OpacityContext.Provider>
-        {selectedStroke && (
-          <SelectBox stroke={selectedStroke} setSelectedStroke={setSelectedStroke} />
+        {!selectedStrokes && selectedStroke && (
+          <SelectBox selectedStroke={selectedStroke} setSelectedStroke={setSelectedStroke} />
+        )}
+        {selectedStrokes && (
+          <MultiSelectBox selectedStrokes={selectedStrokes} setSelectedStrokes={setSelectedStrokes} />
         )}
       </WBContext.Provider>
     </>
