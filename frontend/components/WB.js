@@ -167,7 +167,7 @@ export default {
       .on('undo', (stroke) => that.onUndo(stroke))
       .on('delete', (strokes) => that.onDelete(strokes))
       .on('move', (movement) => that.onMove(movement))
-      .on('copy', ({ strokeId, newStrokeId }) => that.copy(strokeId, newStrokeId))
+      .on('copy', ({ strokeIds, newStrokeIds }) => that.copy(strokeIds, newStrokeIds))
       .on('zoom', ({ strokeId, scale, delta }) => that.redrawWithZoom(strokeId, scale, delta));
 
     // window resize, redraw
@@ -922,83 +922,85 @@ export default {
     this.redraw();
   },
 
-  move({ strokeId, delta: { x, y } }) {
-    const stroke = this.drawings.get(strokeId);
-    for (const { beginPoint, controlPoint, endPoint } of stroke) {
-      beginPoint.x += x;
-      beginPoint.y += y;
-      controlPoint.x += x;
-      controlPoint.y += y;
-      endPoint.x += x;
-      endPoint.y += y;
-    }
-    const { inf_area } = stroke;
-    inf_area.x0 += x;
-    inf_area.x1 += x;
-    inf_area.y0 += y;
-    inf_area.y1 += y;
+  move({ strokeIds, delta: { x, y } }) {
+    strokeIds.forEach((strokeId) => {
+      const stroke = this.drawings.get(strokeId);
+      for (const { beginPoint, controlPoint, endPoint } of stroke) {
+        beginPoint.x += x;
+        beginPoint.y += y;
+        controlPoint.x += x;
+        controlPoint.y += y;
+        endPoint.x += x;
+        endPoint.y += y;
+      }
+      const { inf_area } = stroke;
+      inf_area.x0 += x;
+      inf_area.x1 += x;
+      inf_area.y0 += y;
+      inf_area.y1 += y;
+    });
   },
 
   moving(strokeId, delta) {
     const { x, y } = this.toLogicDelta(delta);
-    this.move({ strokeId, delta: { x, y } });
+    this.move({ strokeIds: [strokeId], delta: { x, y } });
     redrawSelectBoxWithThrottle({ WB: this, strokeId, source: true });
     return { x, y };
   },
 
+  moved(strokeId, delta) {
+    // 发送服务器，移动此笔划
+    this.socket.emit('move', {
+      strokeIds: [strokeId],
+      delta
+    });
+    redrawSelectBoxWithThrottle({ WB: this, strokeId, source: true, force: true });
+  },
+
   multiMoving(strokeIds, delta) {
     const logicDelta = this.toLogicDelta(delta);
-    strokeIds.forEach((strokeId) => this.move({ strokeId, delta: logicDelta }));
+    this.move({ strokeIds, delta: logicDelta });
     this.selectionBox.left += delta.x;
     this.selectionBox.top += delta.y;
     redrawMultiSelectBoxWithThrottle({ WB: this, strokeIds, dragging: true, source: true });
     return logicDelta;
   },
 
-  moved(strokeId, delta) {
-    // 发送服务器，移动此笔划
-    this.socket.emit('move', {
-      strokeId,
-      delta
-    });
-    redrawSelectBoxWithThrottle({ WB: this, strokeId, source: true, force: true });
-  },
-
   multiMoved(strokeIds, delta) {
     // 发送服务器，移动笔划
-    strokeIds.forEach((strokeId) => this.socket.emit('move', {
-      strokeId,
+    this.socket.emit('move', {
+      strokeIds,
       delta
-    }));
+    });
     redrawMultiSelectBoxWithThrottle({ WB: this, strokeIds, source: true, force: true });
   },
 
-  copy(strokeId, copiedStrokeId) {
-    const stroke = this.drawings.get(strokeId);
+  copy(strokeIds, copiedStrokeIds) {
+    const newStrokeIds = [];
+    strokeIds.forEach((strokeId, i) => {
+      const stroke = this.drawings.get(strokeId);
 
-    const copied = [];
-    copied.inf_id = copiedStrokeId || newStrokeId();
-    copied.inf_area = { ...stroke.inf_area };
+      const copied = [];
+      copied.inf_id = copiedStrokeIds ? copiedStrokeIds[i] : newStrokeId();
+      copied.inf_area = { ...stroke.inf_area };
 
-    for (const { pen, beginPoint, controlPoint, endPoint } of stroke) {
-      copied.push({
-        pen: { ...pen },
-        beginPoint: { ...beginPoint },
-        controlPoint: { ...controlPoint },
-        endPoint: { ...endPoint },
-      });
-    }
+      for (const { pen, beginPoint, controlPoint, endPoint } of stroke) {
+        copied.push({
+          pen: { ...pen },
+          beginPoint: { ...beginPoint },
+          controlPoint: { ...controlPoint },
+          endPoint: { ...endPoint },
+        });
+      }
 
-    this.drawings.set(copied.inf_id, copied);
-    this.strokes.push(copied.inf_id);
-    if (!copiedStrokeId) {
+      this.drawings.set(copied.inf_id, copied);
+      this.strokes.push(copied.inf_id);
+      !copiedStrokeIds && newStrokeIds.push(copied.inf_id);
+    });
+    if (!copiedStrokeIds) {
       // 发送服务器，复制此笔划
-      this.socket.emit('copy', { strokeId, newStrokeId: copied.inf_id });
+      this.socket.emit('copy', { strokeIds, newStrokeIds });
     }
-  },
-
-  multiCopy(strokeIds) {
-    strokeIds.forEach((strokeId) => this.copy(strokeId));
   },
 
   zoom(strokeId, scale, delta, source) {

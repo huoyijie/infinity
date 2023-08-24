@@ -19,7 +19,7 @@ export default function ({ selectedStroke: { strokeId, box: { left, top, width, 
   };
 
   const onCopy = () => {
-    WB.copy(strokeId);
+    WB.copy([strokeId]);
     setHint('Copied');
     setTimeout(() => setHint(null), 3000);
   };
@@ -65,11 +65,11 @@ export default function ({ selectedStroke: { strokeId, box: { left, top, width, 
   return (
     <>
       <div className={'fixed bg-slate-800 text-white rounded p-1 flex flex-row gap-3' + (movingPos.current ? ' z-[199]' : ' z-[201]')} style={{ left, top: top - 36 }}>
-        <div className="cursor-pointer hover:text-slate-300" onClick={onDelete}><Trash /></div>
+        <div className={'cursor-move' + (moving ? ' text-red-600 hover:text-red-300' : ' hover:text-slate-300')} onClick={onHandRaised}><HandRaised /></div>
         <div className="cursor-pointer hover:text-slate-300" onClick={onCopy}><Copy /></div>
         <div className="cursor-pointer hover:text-slate-300" onClick={onZoomOut}><MagnifyingGlassMinus /></div>
         <div className="cursor-pointer hover:text-slate-300" onClick={onZoomIn}><MagnifyingGlassPlus /></div>
-        <div className={'cursor-move' + (moving ? ' text-red-600 hover:text-red-300' : ' hover:text-slate-300')} onClick={onHandRaised}><HandRaised /></div>
+        <div className="cursor-pointer hover:text-slate-300" onClick={onDelete}><Trash /></div>
       </div>
       <div id={`stroke-${strokeId}-selected`} className={'fixed z-[100] border-dashed border-2 border-slate-800 flex justify-center items-center' + (moving || hint ? ' bg-red-400 opacity-50' : '')} style={{ left, top, width, height }}>
         {hint && (

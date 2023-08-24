@@ -189,18 +189,18 @@ io.on('connection', async (socket) => {
       undos.push(...strokes.ids);
     })
     // 移动笔划
-    .on('move', (movement) => {
+    .on('move', ({ strokeIds, delta }) => {
       // 广播给其他客户端
-      socket.broadcast.emit('move', movement);
+      socket.broadcast.emit('move', { strokeIds, delta });
       // 放入移动队列
-      moves.push(movement);
+      strokeIds.forEach(strokeId => moves.push({ strokeId, delta }));
     })
     // 复制笔划
-    .on('copy', ({ strokeId, newStrokeId }) => {
+    .on('copy', ({ strokeIds, newStrokeIds }) => {
       // 广播给其他客户端
-      socket.broadcast.emit('copy', { strokeId, newStrokeId });
+      socket.broadcast.emit('copy', { strokeIds, newStrokeIds });
       // 放入复制队列
-      copies.push({ strokeId, newStrokeId });
+      strokeIds.forEach((strokeId, i) => copies.push({ strokeId, newStrokeId: newStrokeIds[i] }));
     })
     // 缩放笔划
     .on('zoom', (zoom) => {

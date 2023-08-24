@@ -21,7 +21,7 @@ export default function ({ selectedStrokes: {
     setTimeout(() => WB.delete(strokeIds, true), 10);
   };
   const onCopy = () => {
-    WB.multiCopy(strokeIds);
+    WB.copy(strokeIds);
     setHint('Copied');
     setTimeout(() => setHint(null), 3000);
   };
@@ -65,11 +65,11 @@ export default function ({ selectedStrokes: {
       {!dragging && (
         <>
           <div className={'fixed bg-slate-800 text-white rounded p-1 flex flex-row gap-3' + (movingPos.current ? ' z-[199]' : ' z-[201]')} style={{ left, top: top - 36 }}>
-            <div className="cursor-pointer hover:text-slate-300" onClick={onDelete}><Trash /></div>
+            <div className={'cursor-move' + (moving ? ' text-red-600 hover:text-red-300' : ' hover:text-slate-300')} onClick={onHandRaised}><HandRaised /></div>
             <div className="cursor-pointer hover:text-slate-300" onClick={onCopy}><Copy /></div>
             <div className="cursor-pointer hover:text-slate-300" onClick={onZoomOut}><MagnifyingGlassMinus /></div>
             <div className="cursor-pointer hover:text-slate-300" onClick={onZoomIn}><MagnifyingGlassPlus /></div>
-            <div className={'cursor-move' + (moving ? ' text-red-600 hover:text-red-300' : ' hover:text-slate-300')} onClick={onHandRaised}><HandRaised /></div>
+            <div className="cursor-pointer hover:text-slate-300" onClick={onDelete}><Trash /></div>
           </div>
           <div className="fixed z-[99] h-full w-full" onClick={() => {
             setSelectedStrokes(null);
