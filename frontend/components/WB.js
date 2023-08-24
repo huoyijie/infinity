@@ -101,14 +101,14 @@ export default {
   // Lazy Brush
   lazyBrush: new LazyBrush({
     enabled: true,
-    radius: 10,
+    radius: 4,
     initialPoint: { x: 0, y: 0 }
   }),
 
   selectionBox: null,
 
   // 初始化画板
-  init(canvasRef, draftCanvasRef, lbCanvasRef, mode, { opacity }, onLoad, onCursor, onSelect, onMultiSelect) {
+  init(canvasRef, draftCanvasRef, lbCanvasRef, mode, pen, onLoad, onCursor, onSelect, onMultiSelect) {
     const that = this;
     // 获取画板元素及上下文对象
     this.canvas = canvasRef.current;
@@ -124,7 +124,7 @@ export default {
     this.history = [];
     // 当画板上进入不同状态时可通过此函数变换鼠标样式
     this.mode = mode;
-    this.pen.opacity = opacity;
+    this.pen = pen;
     this.onLoad = onLoad;
     this.onCursor = onCursor;
     this.onSelect = onSelect;

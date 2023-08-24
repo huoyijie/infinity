@@ -34,7 +34,7 @@ export default function ({ showHelp }) {
           <span><HandRaised />Move mode</span>
           <span><Undo />Undo stroke</span>
           <span>
-            <ColorContext.Provider value={'black'}>
+            <ColorContext.Provider value={{ selectedColor: 'black' }}>
               <OpacityContext.Provider value={100}>
                 <Color />
               </OpacityContext.Provider>

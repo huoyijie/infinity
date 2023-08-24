@@ -1,9 +1,8 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext } from 'react';
 import Color from './assets/Color';
-import Button from './Button';
-import WBContext from './WBContext';
-import ColorContext from './ColorContext';
 import Sun from './assets/Sun'
+import Button from './Button';
+import ColorContext from './ColorContext';
 import SettingContext from './SettingContext';
 import OpacityContext from './OpacityContext';
 import { HexColorPicker } from 'react-colorful';
@@ -32,31 +31,18 @@ const colors = [
 ];
 
 export default function ({ showColors, showOpacity }) {
-  const WB = useContext(WBContext);
-  const [selectedColor, setSelectedColor] = useState(null);
+  const { selectedColor, setSelectedColor } = useContext(ColorContext);
   const { opacity, setOpacity } = useContext(OpacityContext);
   const { setShowColors, setShowOpacity, resetAll } = useContext(SettingContext);
 
-  useEffect(() => {
-    const selectedColor = localStorage.getItem('selectedColor') || 'black';
-    WB.setColor(selectedColor);
-    setSelectedColor(selectedColor);
-  }, []);
-
-  // 设置颜色
-  const setColor = (color) => {
-    WB.setColor(color);
-    setSelectedColor(color);
-    localStorage.setItem('selectedColor', color);
-  };
   // 点击颜色组件选色处理函数
   const selectColor = (color) => {
-    setColor(color);
+    setSelectedColor(color);
     setShowColors(false);
   };
 
   return (
-    <ColorContext.Provider value={selectedColor}>
+    <>
       <div className="flex flex-row">
         <Button Icon={Color} selected={showColors} onClick={() => {
           resetAll();
@@ -70,7 +56,7 @@ export default function ({ showColors, showOpacity }) {
               ))}
             </div>
             <div className="fixed left-16 top-96 translate-y-6">
-              <HexColorPicker color={selectedColor} onChange={setColor} />
+              <HexColorPicker color={selectedColor} onChange={setSelectedColor} />
             </div>
           </>
         )}
@@ -82,14 +68,10 @@ export default function ({ showColors, showOpacity }) {
         }} />
         {showOpacity && (
           <div className="fixed left-16 rounded h-10 p-2" style={{ opacity: opacity + '%', backgroundColor: selectedColor }}>
-            <input id="default-range" type="range" defaultValue={opacity} min={15} max={100} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => {
-              const { value } = e.target;
-              setOpacity(value);
-              WB.setOpacity(value);
-            }} />
+            <input id="default-range" type="range" defaultValue={opacity} min={15} max={100} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" onChange={(e) => setOpacity(e.target.value)} />
           </div>
         )}
       </div>
-    </ColorContext.Provider>
+    </>
   );
 }
