@@ -168,7 +168,7 @@ export default {
       .on('delete', (strokes) => that.onDelete(strokes))
       .on('move', (movement) => that.onMove(movement))
       .on('copy', ({ strokeId, newStrokeId }) => that.copy(strokeId, newStrokeId))
-      .on('zoom', ({ strokeId, scale }) => that.redrawWithZoom(strokeId, scale));
+      .on('zoom', ({ strokeId, scale, delta }) => that.redrawWithZoom(strokeId, scale, delta));
 
     // window resize, redraw
     window.onresize = () => that.redraw();
@@ -1001,11 +1001,11 @@ export default {
     strokeIds.forEach((strokeId) => this.copy(strokeId));
   },
 
-  zoom(strokeId, scale, source) {
+  zoom(strokeId, scale, delta, source) {
     const stroke = this.drawings.get(strokeId);
     const { inf_area } = stroke;
-    const deltaX = (scale - 1) * inf_area.x0;
-    const deltaY = (scale - 1) * inf_area.y0;
+    const deltaX = delta ? delta.x : (scale - 1) * inf_area.x0;
+    const deltaY = delta ? delta.y : (scale - 1) * inf_area.y0;
     inf_area.x0 *= scale;
     inf_area.x0 -= deltaX;
     inf_area.x1 *= scale;
@@ -1032,17 +1032,17 @@ export default {
     source && this.socket.emit('zoom', { strokeId, scale, delta: { x: deltaX, y: deltaY } });
   },
 
-  redrawWithZoom(strokeId, scale, source) {
-    this.zoom(strokeId, scale, source);
+  redrawWithZoom(strokeId, scale, delta, source) {
+    this.zoom(strokeId, scale, delta, source);
     redrawSelectBoxWithThrottle({ WB: this, strokeId, source, force: true });
   },
 
   zoomIn(strokeId) {
-    this.redrawWithZoom(strokeId, 1.1, true);
+    this.redrawWithZoom(strokeId, 1.1, null, true);
   },
 
   zoomOut(strokeId) {
-    this.redrawWithZoom(strokeId, 1 / 1.1, true);
+    this.redrawWithZoom(strokeId, 1 / 1.1, null, true);
   },
 
   zoomSelectionBox(scale) {
@@ -1055,11 +1055,12 @@ export default {
     this.selectionBox.top -= deltaY;
     this.selectionBox.width *= scale;
     this.selectionBox.height *= scale;
+    return { x: (scale - 1) * this.toLogicX(left), y: (scale - 1) * this.toLogicY(top) };
   },
 
   multiZoom(strokeIds, scale) {
-    strokeIds.forEach((strokeId) => this.zoom(strokeId, scale, true));
-    this.zoomSelectionBox(scale);
+    const delta = this.zoomSelectionBox(scale);
+    strokeIds.forEach((strokeId) => this.zoom(strokeId, scale, delta, true));
     redrawMultiSelectBoxWithThrottle({ WB: this, strokeIds, source: true, force: true });
   },
 
