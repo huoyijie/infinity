@@ -9,141 +9,130 @@ config();
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-var taskNum = 0;
 var drawings = [];
 var undos = [];
 var moves = [];
 var copies = [];
 var zooms = [];
-setInterval(async () => {
-  // 最多同时存在 5 个写数据库任务，最多占据 5 个数据库连接
-  if (taskNum < 5) {
-    if (undos.length > 0) {
-      // 如果在队列中，则从队列中删除
-      drawings = drawings.filter((drawing) => !undos.includes(drawing.strokeId));
-      // 从数据库删除
-      const strokeIds = undos;
-      // 必须先清空缓存
-      undos = [];
 
-      taskNum++;
-      await prisma.drawing.deleteMany({
-        where: {
-          strokeId: { in: strokeIds }
+setInterval(async () => {
+  const promises = [];
+  if (drawings.length > 0) {
+    const data = drawings;
+    // 必须先清空缓存
+    drawings = [];
+    // 异步写入数据库
+    promises.push(prisma.drawing.createMany({
+      data,
+      skipDuplicates: true,
+    }));
+  }
+
+  if (undos.length > 0) {
+    // 如果在队列中，则从队列中删除
+    drawings = drawings.filter((drawing) => !undos.includes(drawing.strokeId));
+    // 从数据库删除
+    const strokeIds = undos;
+    // 必须先清空缓存
+    undos = [];
+    promises.push(prisma.drawing.deleteMany({
+      where: {
+        strokeId: { in: strokeIds }
+      }
+    }));
+  }
+
+  if (moves.length > 0) {
+    const movements = moves;
+    moves = [];
+
+    const t = [];
+    for (const { strokeId, delta: { x, y } } of movements) {
+      t.push(prisma.drawing.updateMany({
+        where: { strokeId },
+        data: {
+          beginPointX: { increment: x },
+          beginPointY: { increment: y },
+          ctrlPointX: { increment: x },
+          ctrlPointY: { increment: y },
+          endPointX: { increment: x },
+          endPointY: { increment: y },
+        }
+      }));
+    }
+    promises.push(prisma.$transaction(t));
+  }
+
+  if (zooms.length > 0) {
+    const zoomList = zooms;
+    zooms = [];
+
+    const t = [];
+    for (const { strokeId, scale, delta: { x, y } } of zoomList) {
+      const scaled = prisma.drawing.updateMany({
+        where: { strokeId },
+        data: {
+          beginPointX: { multiply: scale },
+          beginPointY: { multiply: scale },
+          ctrlPointX: { multiply: scale },
+          ctrlPointY: { multiply: scale },
+          endPointX: { multiply: scale },
+          endPointY: { multiply: scale },
         }
       });
-      taskNum--;
-    }
-
-    if (moves.length > 0) {
-      const movements = moves;
-      moves = [];
-
-      const t = [];
-      for (const { strokeId, delta: { x, y } } of movements) {
-        t.push(prisma.drawing.updateMany({
-          where: { strokeId },
-          data: {
-            beginPointX: { increment: x },
-            beginPointY: { increment: y },
-            ctrlPointX: { increment: x },
-            ctrlPointY: { increment: y },
-            endPointX: { increment: x },
-            endPointY: { increment: y },
-          }
-        }));
-      }
-
-      taskNum++;
-      await prisma.$transaction(t);
-      taskNum--;
-    }
-
-    if (copies.length > 0) {
-      const copyList = copies;
-      copies = [];
-
-      const strokeIds = copyList.map(({ strokeId }) => strokeId);
-
-      taskNum++;
-      const srcDrawings = await prisma.drawing.findMany({
-        where: { strokeId: { in: strokeIds } },
-        orderBy: [{ id: 'asc' }],
+      const processDelta = prisma.drawing.updateMany({
+        where: { strokeId },
+        data: {
+          beginPointX: { decrement: x },
+          beginPointY: { decrement: y },
+          ctrlPointX: { decrement: x },
+          ctrlPointY: { decrement: y },
+          endPointX: { decrement: x },
+          endPointY: { decrement: y },
+        }
       });
-      taskNum--;
-
-      const bulk = [];
-      for (const { strokeId, newStrokeId } of copyList) {
-        const drawings = srcDrawings
-          .filter(({ strokeId: sid }) => sid === strokeId)
-          .map(drawing => {
-            const dstDrawing = { ...drawing };
-            delete dstDrawing.id;
-            dstDrawing.strokeId = newStrokeId;
-            return dstDrawing;
-          });
-        bulk.push(...drawings);
-      }
-
-      taskNum++;
-      await prisma.drawing.createMany({
-        data: bulk,
-        skipDuplicates: true,
-      });
-      taskNum--;
+      t.push(scaled, processDelta);
     }
 
-    if (zooms.length > 0) {
-      const zoomList = zooms;
-      zooms = [];
-
-      const t = [];
-      for (const { strokeId, scale, delta: { x, y } } of zoomList) {
-        const scaled = prisma.drawing.updateMany({
-          where: { strokeId },
-          data: {
-            beginPointX: { multiply: scale },
-            beginPointY: { multiply: scale },
-            ctrlPointX: { multiply: scale },
-            ctrlPointY: { multiply: scale },
-            endPointX: { multiply: scale },
-            endPointY: { multiply: scale },
-          }
-        });
-        const processDelta = prisma.drawing.updateMany({
-          where: { strokeId },
-          data: {
-            beginPointX: { decrement: x },
-            beginPointY: { decrement: y },
-            ctrlPointX: { decrement: x },
-            ctrlPointY: { decrement: y },
-            endPointX: { decrement: x },
-            endPointY: { decrement: y },
-          }
-        });
-        t.push(scaled, processDelta);
-      }
-
-      taskNum++;
-      await prisma.$transaction(t);
-      taskNum--;
-    }
-
-    if (drawings.length > 0) {
-      const data = drawings;
-      // 必须先清空缓存
-      drawings = [];
-      // 异步写入数据库
-
-      taskNum++;
-      await prisma.drawing.createMany({
-        data,
-        skipDuplicates: true,
-      });
-      taskNum--;
-    }
+    promises.push(prisma.$transaction(t));
   }
-}, 10);
+
+  if (promises.length > 0) {
+    await Promise.all(promises);
+  }
+}, 5);
+
+setInterval(async () => {
+  if (copies.length > 0) {
+    const copyList = copies;
+    copies = [];
+
+    const strokeIds = copyList.map(({ strokeId }) => strokeId);
+
+    const srcDrawings = await prisma.drawing.findMany({
+      where: { strokeId: { in: strokeIds } },
+      orderBy: [{ id: 'asc' }],
+    });
+
+    const bulk = [];
+    for (const { strokeId, newStrokeId } of copyList) {
+      const drawings = srcDrawings
+        .filter(({ strokeId: sid }) => sid === strokeId)
+        .map(drawing => {
+          const dstDrawing = { ...drawing };
+          delete dstDrawing.id;
+          dstDrawing.strokeId = newStrokeId;
+          return dstDrawing;
+        });
+      bulk.push(...drawings);
+    }
+
+    await prisma.drawing.createMany({
+      data: bulk,
+      skipDuplicates: true,
+    });
+  }
+}, 5);
 
 // 创建 http server
 const httpServer = createServer();
