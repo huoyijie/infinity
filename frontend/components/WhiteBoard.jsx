@@ -45,6 +45,43 @@ function WhiteBoard() {
     return () => WB.close();
   }, []);
 
+  const colorCtxVal = {
+    selectedColor, setSelectedColor: (color) => {
+      WB.setColor(color);
+      setSelectedColor(color);
+      localStorage.setItem('selectedColor', color);
+    }
+  };
+
+  const opacityCtxVal = {
+    opacity, setOpacity: (opacity) => {
+      WB.setOpacity(opacity);
+      setOpacity(opacity);
+      localStorage.setItem('opacity', opacity);
+    }
+  };
+
+  const pencilCtxVal = {
+    pencilSize, setPencilSize: (pencilSize) => {
+      WB.setSize(pencilSize);
+      setPencilSize(pencilSize);
+      localStorage.setItem('pencilSize', pencilSize)
+    }
+  };
+
+  const clearSelects = () => {
+    setSelectedStroke(null);
+    setSelectedStrokes(null);
+    WB.selectionBox = null;
+  };
+
+  const changeMode = (mode) => {
+    WB.setMode(mode);
+    setMode(mode);
+    localStorage.setItem('mode', mode);
+    clearSelects();
+  };
+
   const lbCanvasClass = () => {
     let c = 'fixed z-40 w-full h-full';
     if (cursor) {
@@ -61,35 +98,10 @@ function WhiteBoard() {
       <canvas ref={draftCanvasRef} id="draftCanvas" className="fixed z-30 w-full h-full" style={{ opacity: opacity + '%' }}></canvas>
       <canvas ref={canvasRef} id="canvas" className="fixed z-10 w-full h-full"></canvas>
       <WBContext.Provider value={WB}>
-        <ColorContext.Provider value={{
-          selectedColor, setSelectedColor: (color) => {
-            WB.setColor(color);
-            setSelectedColor(color);
-            localStorage.setItem('selectedColor', color);
-          }
-        }}>
-          <OpacityContext.Provider value={{
-            opacity, setOpacity: (opacity) => {
-              WB.setOpacity(opacity);
-              setOpacity(opacity);
-              localStorage.setItem('opacity', opacity);
-            }
-          }}>
-            <PencilContext.Provider value={{
-              pencilSize, setPencilSize: (pencilSize) => {
-                WB.setSize(pencilSize);
-                setPencilSize(pencilSize);
-                localStorage.setItem('pencilSize', pencilSize)
-              }
-            }}>
-              <Toolbar mode={mode} setMode={(mode) => {
-                WB.setMode(mode);
-                setMode(mode);
-                localStorage.setItem('mode', mode);
-                setSelectedStroke(null);
-                setSelectedStrokes(null);
-                WB.selectionBox = null;
-              }} />
+        <ColorContext.Provider value={colorCtxVal}>
+          <OpacityContext.Provider value={opacityCtxVal}>
+            <PencilContext.Provider value={pencilCtxVal}>
+              <Toolbar mode={mode} setMode={changeMode} />
             </PencilContext.Provider>
           </OpacityContext.Provider>
         </ColorContext.Provider>
