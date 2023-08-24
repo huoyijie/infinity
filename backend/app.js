@@ -22,15 +22,14 @@ setInterval(async () => {
       // 如果在队列中，则从队列中删除
       drawings = drawings.filter((drawing) => !undos.includes(drawing.strokeId));
       // 从数据库删除
-      taskNum++;
       const strokeIds = undos;
       // 必须先清空缓存
       undos = [];
+
+      taskNum++;
       await prisma.drawing.deleteMany({
         where: {
-          strokeId: {
-            in: strokeIds
-          }
+          strokeId: { in: strokeIds }
         }
       });
       taskNum--;
@@ -39,9 +38,10 @@ setInterval(async () => {
     if (moves.length > 0) {
       const movements = moves;
       moves = [];
+
+      const t = [];
       for (const { strokeId, delta: { x, y } } of movements) {
-        taskNum++;
-        await prisma.drawing.updateMany({
+        t.push(prisma.drawing.updateMany({
           where: { strokeId },
           data: {
             beginPointX: { increment: x },
@@ -51,41 +51,54 @@ setInterval(async () => {
             endPointX: { increment: x },
             endPointY: { increment: y },
           }
-        });
-        taskNum--;
+        }));
       }
+
+      taskNum++;
+      await prisma.$transaction(t);
+      taskNum--;
     }
 
     if (copies.length > 0) {
       const copyList = copies;
       copies = [];
+
+      const strokeIds = copyList.map(({ strokeId }) => strokeId);
+
+      taskNum++;
+      const srcDrawings = await prisma.drawing.findMany({
+        where: { strokeId: { in: strokeIds } },
+        orderBy: [{ id: 'asc' }],
+      });
+      taskNum--;
+
+      const bulk = [];
       for (const { strokeId, newStrokeId } of copyList) {
-        taskNum++;
-        const drawings = await prisma.drawing.findMany({
-          where: { strokeId },
-          orderBy: [{ id: 'asc' }],
-        });
-        taskNum--;
-
-        for (const drawing of drawings) {
-          delete drawing.id;
-          drawing.strokeId = newStrokeId;
-        }
-
-        taskNum++;
-        await prisma.drawing.createMany({
-          data: drawings,
-          skipDuplicates: true,
-        });
-        taskNum--;
+        const drawings = srcDrawings
+          .filter(({ strokeId: sid }) => sid === strokeId)
+          .map(drawing => {
+            const dstDrawing = { ...drawing };
+            delete dstDrawing.id;
+            dstDrawing.strokeId = newStrokeId;
+            return dstDrawing;
+          });
+        bulk.push(...drawings);
       }
+
+      taskNum++;
+      await prisma.drawing.createMany({
+        data: bulk,
+        skipDuplicates: true,
+      });
+      taskNum--;
     }
 
     if (zooms.length > 0) {
       const zoomList = zooms;
       zooms = [];
+
+      const t = [];
       for (const { strokeId, scale, delta: { x, y } } of zoomList) {
-        taskNum++;
         const scaled = prisma.drawing.updateMany({
           where: { strokeId },
           data: {
@@ -108,17 +121,21 @@ setInterval(async () => {
             endPointY: { decrement: y },
           }
         });
-        await prisma.$transaction([scaled, processDelta]);
-        taskNum--;
+        t.push(scaled, processDelta);
       }
+
+      taskNum++;
+      await prisma.$transaction(t);
+      taskNum--;
     }
 
     if (drawings.length > 0) {
-      taskNum++;
       const data = drawings;
       // 必须先清空缓存
       drawings = [];
       // 异步写入数据库
+
+      taskNum++;
       await prisma.drawing.createMany({
         data,
         skipDuplicates: true,
@@ -203,10 +220,12 @@ io.on('connection', async (socket) => {
       strokeIds.forEach((strokeId, i) => copies.push({ strokeId, newStrokeId: newStrokeIds[i] }));
     })
     // 缩放笔划
-    .on('zoom', (zoom) => {
+    .on('zoom', ({ strokeIds, scale, delta }) => {
       // 广播给其他客户端
-      socket.broadcast.emit('zoom', zoom);
-      zooms.push(zoom);
+      socket.broadcast.emit('zoom', { strokeIds, scale, delta });
+      strokeIds.forEach(strokeId => zooms.push({
+        strokeId, scale, delta
+      }));
     })
     // 连接断开
     .on('disconnect', () => {

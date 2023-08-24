@@ -168,7 +168,7 @@ export default {
       .on('delete', (strokes) => that.onDelete(strokes))
       .on('move', (movement) => that.onMove(movement))
       .on('copy', ({ strokeIds, newStrokeIds }) => that.copy(strokeIds, newStrokeIds))
-      .on('zoom', ({ strokeId, scale, delta }) => that.redrawWithZoom(strokeId, scale, delta));
+      .on('zoom', (zoom) => that.onZoom(zoom));
 
     // window resize, redraw
     window.onresize = () => that.redraw();
@@ -443,6 +443,12 @@ export default {
   // 收到远程移动笔划
   onMove(movement) {
     this.move(movement);
+    this.redraw();
+  },
+
+  // 收到远程 zoom
+  onZoom({ strokeIds, scale, delta }) {
+    this.zoom(strokeIds, scale, delta);
     this.redraw();
   },
 
@@ -1003,39 +1009,44 @@ export default {
     }
   },
 
-  zoom(strokeId, scale, delta, source) {
-    const stroke = this.drawings.get(strokeId);
-    const { inf_area } = stroke;
-    const deltaX = delta ? delta.x : (scale - 1) * inf_area.x0;
-    const deltaY = delta ? delta.y : (scale - 1) * inf_area.y0;
-    inf_area.x0 *= scale;
-    inf_area.x0 -= deltaX;
-    inf_area.x1 *= scale;
-    inf_area.x1 -= deltaX;
-    inf_area.y0 *= scale;
-    inf_area.y0 -= deltaY;
-    inf_area.y1 *= scale;
-    inf_area.y1 -= deltaY;
+  zoom(strokeIds, scale, delta, source) {
+    const { x: deltaX, y: deltaY } = delta;
+    strokeIds.forEach(strokeId => {
+      const stroke = this.drawings.get(strokeId);
+      const { inf_area } = stroke;
+      inf_area.x0 *= scale;
+      inf_area.x0 -= deltaX;
+      inf_area.x1 *= scale;
+      inf_area.x1 -= deltaX;
+      inf_area.y0 *= scale;
+      inf_area.y0 -= deltaY;
+      inf_area.y1 *= scale;
+      inf_area.y1 -= deltaY;
 
-    for (const { beginPoint, controlPoint, endPoint } of stroke) {
-      beginPoint.x *= scale;
-      beginPoint.x -= deltaX;
-      beginPoint.y *= scale;
-      beginPoint.y -= deltaY;
-      controlPoint.x *= scale;
-      controlPoint.x -= deltaX;
-      controlPoint.y *= scale;
-      controlPoint.y -= deltaY;
-      endPoint.x *= scale;
-      endPoint.x -= deltaX;
-      endPoint.y *= scale;
-      endPoint.y -= deltaY;
-    }
-    source && this.socket.emit('zoom', { strokeId, scale, delta: { x: deltaX, y: deltaY } });
+      for (const { beginPoint, controlPoint, endPoint } of stroke) {
+        beginPoint.x *= scale;
+        beginPoint.x -= deltaX;
+        beginPoint.y *= scale;
+        beginPoint.y -= deltaY;
+        controlPoint.x *= scale;
+        controlPoint.x -= deltaX;
+        controlPoint.y *= scale;
+        controlPoint.y -= deltaY;
+        endPoint.x *= scale;
+        endPoint.x -= deltaX;
+        endPoint.y *= scale;
+        endPoint.y -= deltaY;
+      }
+    });
+    source && this.socket.emit('zoom', { strokeIds, scale, delta });
   },
 
   redrawWithZoom(strokeId, scale, delta, source) {
-    this.zoom(strokeId, scale, delta, source);
+    if (!delta) {
+      const { inf_area: { x0, y0 } } = this.drawings.get(strokeId);
+      delta = { x: (scale - 1) * x0, y: (scale - 1) * y0 };
+    }
+    this.zoom([strokeId], scale, delta, source);
     redrawSelectBoxWithThrottle({ WB: this, strokeId, source, force: true });
   },
 
@@ -1062,7 +1073,7 @@ export default {
 
   multiZoom(strokeIds, scale) {
     const delta = this.zoomSelectionBox(scale);
-    strokeIds.forEach((strokeId) => this.zoom(strokeId, scale, delta, true));
+    this.zoom(strokeIds, scale, delta, true);
     redrawMultiSelectBoxWithThrottle({ WB: this, strokeIds, source: true, force: true });
   },
 
