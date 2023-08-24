@@ -69,7 +69,7 @@ export default function ({ showColors, showOpacity }) {
                 <div key={color} className="inline-block w-10 h-10 rounded hover:opacity-25" style={{ backgroundColor: color }} onClick={() => selectColor(color)}></div>
               ))}
             </div>
-            <div className="fixed left-16 top-80 translate-y-10">
+            <div className="fixed left-16 top-96 translate-y-6">
               <HexColorPicker color={selectedColor} onChange={setColor} />
             </div>
           </>
