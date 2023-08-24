@@ -174,9 +174,6 @@ export default {
     window.onresize = () => that.redraw();
     // 禁止右键唤起上下文菜单
     document.oncontextmenu = () => false;
-
-    // 初始化画板
-    this.redraw();
   },
 
   // 清理资源
