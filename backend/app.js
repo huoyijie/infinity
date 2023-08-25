@@ -12,8 +12,8 @@ const prisma = new PrismaClient();
 var drawings = [];
 var undos = [];
 var moves = [];
-var copies = [];
 var zooms = [];
+var copies = [];
 
 setInterval(async () => {
   const promises = [];
@@ -46,10 +46,9 @@ setInterval(async () => {
     const movements = moves;
     moves = [];
 
-    const t = [];
-    for (const { strokeId, delta: { x, y } } of movements) {
-      t.push(prisma.drawing.updateMany({
-        where: { strokeId },
+    for (const { strokeIds, delta: { x, y } } of movements) {
+      promises.push(prisma.drawing.updateMany({
+        where: { strokeId: { in: strokeIds } },
         data: {
           beginPointX: { increment: x },
           beginPointY: { increment: y },
@@ -60,17 +59,15 @@ setInterval(async () => {
         }
       }));
     }
-    promises.push(prisma.$transaction(t));
   }
 
   if (zooms.length > 0) {
     const zoomList = zooms;
     zooms = [];
 
-    const t = [];
-    for (const { strokeId, scale, delta: { x, y } } of zoomList) {
+    for (const { strokeIds, scale, delta: { x, y } } of zoomList) {
       const scaled = prisma.drawing.updateMany({
-        where: { strokeId },
+        where: { strokeId: { in: strokeIds } },
         data: {
           beginPointX: { multiply: scale },
           beginPointY: { multiply: scale },
@@ -81,7 +78,7 @@ setInterval(async () => {
         }
       });
       const processDelta = prisma.drawing.updateMany({
-        where: { strokeId },
+        where: { strokeId: { in: strokeIds } },
         data: {
           beginPointX: { decrement: x },
           beginPointY: { decrement: y },
@@ -91,10 +88,8 @@ setInterval(async () => {
           endPointY: { decrement: y },
         }
       });
-      t.push(scaled, processDelta);
+      promises.push(prisma.$transaction([scaled, processDelta]));
     }
-
-    promises.push(prisma.$transaction(t));
   }
 
   if (promises.length > 0) {
@@ -107,30 +102,40 @@ setInterval(async () => {
     const copyList = copies;
     copies = [];
 
-    const strokeIds = copyList.map(({ strokeId }) => strokeId);
+    const srcStrokeIds = [];
+    copyList.forEach(({ strokeIds }) => srcStrokeIds.push(...strokeIds));
 
     const srcDrawings = await prisma.drawing.findMany({
-      where: { strokeId: { in: strokeIds } },
+      where: { strokeId: { in: srcStrokeIds } },
       orderBy: [{ id: 'asc' }],
     });
 
-    const bulk = [];
-    for (const { strokeId, newStrokeId } of copyList) {
-      const drawings = srcDrawings
-        .filter(({ strokeId: sid }) => sid === strokeId)
-        .map(drawing => {
-          const dstDrawing = { ...drawing };
-          delete dstDrawing.id;
-          dstDrawing.strokeId = newStrokeId;
-          return dstDrawing;
-        });
-      bulk.push(...drawings);
+    const promises = [];
+    for (const { strokeIds, newStrokeIds } of copyList) {
+      const bulk = [];
+      for (let i = 0; i < strokeIds.length; i++) {
+        const strokeId = strokeIds[i];
+        const newStrokeId = newStrokeIds[i];
+        for (const drawing of srcDrawings) {
+          if (drawing.strokeId === strokeId) {
+            const dstDrawing = { ...drawing };
+            delete dstDrawing.id;
+            dstDrawing.strokeId = newStrokeId;
+            bulk.push(dstDrawing);
+          }
+        }
+      }
+      if (bulk.length > 0) {
+        promises.push(prisma.drawing.createMany({
+          data: bulk,
+          skipDuplicates: true,
+        }));
+      }
     }
 
-    await prisma.drawing.createMany({
-      data: bulk,
-      skipDuplicates: true,
-    });
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
   }
 }, 5);
 
@@ -195,26 +200,24 @@ io.on('connection', async (socket) => {
       undos.push(...strokes.ids);
     })
     // 移动笔划
-    .on('move', ({ strokeIds, delta }) => {
+    .on('move', (movement) => {
       // 广播给其他客户端
-      socket.broadcast.emit('move', { strokeIds, delta });
+      socket.broadcast.emit('move', movement);
       // 放入移动队列
-      strokeIds.forEach(strokeId => moves.push({ strokeId, delta }));
+      moves.push(movement);
     })
     // 复制笔划
-    .on('copy', ({ strokeIds, newStrokeIds }) => {
+    .on('copy', (copy) => {
       // 广播给其他客户端
-      socket.broadcast.emit('copy', { strokeIds, newStrokeIds });
+      socket.broadcast.emit('copy', copy);
       // 放入复制队列
-      strokeIds.forEach((strokeId, i) => copies.push({ strokeId, newStrokeId: newStrokeIds[i] }));
+      copies.push(copy);
     })
     // 缩放笔划
-    .on('zoom', ({ strokeIds, scale, delta }) => {
+    .on('zoom', (zoom) => {
       // 广播给其他客户端
-      socket.broadcast.emit('zoom', { strokeIds, scale, delta });
-      strokeIds.forEach(strokeId => zooms.push({
-        strokeId, scale, delta
-      }));
+      socket.broadcast.emit('zoom', zoom);
+      zooms.push(zoom);
     })
     // 连接断开
     .on('disconnect', () => {
