@@ -15,6 +15,7 @@ import MouseWheel from './assets/MouseWheel';
 import TouchPinch from './assets/TouchPinch';
 import BarsUp from './assets/BarsUp';
 import BarsDown from './assets/BarsDown';
+import ArrowRipple from './assets/ArrowRipple';
 
 export default function ({ showHelp }) {
   const { setShowHelp, resetAll } = useContext(SettingContext);
@@ -29,10 +30,11 @@ export default function ({ showHelp }) {
         <div className="fixed left-16 -translate-y-40 border rounded grid grid-cols-2 gap-1 bg-white text-slate-400 p-2">
           <span><BarsUp />Collapse</span>
           <span><BarsDown />Expand</span>
-          <span><PencilSquare />Draw mode</span>
-          <span><Tape />Erase mode</span>
-          <span><HandRaised />Move mode</span>
-          <span><Undo />Undo stroke</span>
+          <span><PencilSquare />Draw</span>
+          <span><Tape />Erase</span>
+          <span><HandRaised />Move</span>
+          <span><ArrowRipple />Select</span>
+          <span><Undo />Undo</span>
           <span>
             <ColorContext.Provider value={{ selectedColor: 'black' }}>
               <OpacityContext.Provider value={100}>
@@ -42,11 +44,10 @@ export default function ({ showHelp }) {
           </span>
           <span><Sun />Set opacity</span>
           <span><Pencil />Set pencil size</span>
-          <span><Question />Help</span>
           <span className="flex justify-center items-center"><MouseWheel /></span>
-          <span><p>Mouse wheel</p><p>(zoom in/out)</p></span>
+          <span><p>Zoom in/out</p><p>(mouse wheel)</p></span>
           <span className="flex justify-center items-center"><TouchPinch /></span>
-          <span><p>Touch pinch</p><p>(zoom in/out)</p></span>
+          <span><p>Zoom in/out</p><p>(touch pinch)</p></span>
         </div>
       )}
     </div>
