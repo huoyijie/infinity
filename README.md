@@ -4,7 +4,7 @@ Infinity is An interesting real-time collaborative whiteboard with infinite spac
 
 [Online Demo](https://huoyijie.github.io/infinity/)
 
-![infinity screenshot](https://github.com/huoyijie/infinity/assets/11747704/88de7f61-3bd8-4880-aff5-9ff42e09a138)
+![infinity screenshot](https://github.com/huoyijie/infinity/assets/11747704/ec8c38f7-5877-4031-b578-c966b70422f9)
 
 ## Install
 
