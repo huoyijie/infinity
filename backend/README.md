@@ -108,7 +108,7 @@ Backend server listen port.
 
 * BASE_PATH (default: /)
 
-You shoud deploy backend server behind nginx with ssl/htt2 enabled.
+You shoud deploy backend server behind nginx with tls enabled.
 
 Such as `wss://huoyijie.cn:1024/infinity/socket.io`, bashPath is `/infinity`.
 
