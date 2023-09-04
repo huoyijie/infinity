@@ -162,7 +162,7 @@ export default {
       path: path.join(basePath, 'socket.io')
     });
     this.socket
-      .on('drawings', (drawings) => that.onRecvDrawings(drawings))
+      .on('drawings', (drawings, callback) => that.onRecvDrawings(drawings, callback))
       .on('drawing', (drawing) => that.onRecvDrawing(drawing))
       .on('undo', (stroke) => that.onUndo(stroke))
       .on('delete', (strokes) => that.onDelete(strokes))
@@ -409,7 +409,8 @@ export default {
   },
 
   // 加载服务器数据，初始化画板
-  onRecvDrawings(drawings) {
+  onRecvDrawings(drawings, callback) {
+    callback();
     for (const drawing of drawings) {
       const { strokeId, color, opacity, size, beginPointX, beginPointY, ctrlPointX, ctrlPointY, endPointX, endPointY } = drawing;
       const pen = { color, opacity, size };

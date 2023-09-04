@@ -8,31 +8,7 @@ import { config } from 'dotenv';
 config();
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient({
-  log: [
-    {
-      emit: 'event',
-      level: 'query',
-    },
-    {
-      emit: 'stdout',
-      level: 'error',
-    },
-    {
-      emit: 'stdout',
-      level: 'info',
-    },
-    {
-      emit: 'stdout',
-      level: 'warn',
-    },
-  ],
-});
-prisma.$on('query', (e) => {
-  console.log('Query: ' + e.query);
-  console.log('Params: ' + e.params);
-  console.log('Duration: ' + e.duration + 'ms');
-});
+const prisma = new PrismaClient();
 
 var drawings = [];
 var undos = [];
@@ -245,9 +221,12 @@ io.on('connection', async (socket) => {
     });
 
   // 客户端打开画板后，立刻推送所有涂鸦数据
-  socket.emit('drawings', await prisma.drawing.findMany({
-    orderBy: [{ id: 'asc' }],
-  }));
+  const t = new Date().getTime();
+  socket.emit(
+    'drawings',
+    await prisma.drawing.findMany({ orderBy: [{ id: 'asc' }] }),
+    () => console.log(socket.id, 'sync drawings cost', new Date().getTime() - t, 'ms')
+  );
 });
 
 const port = process.env.PORT || 5000;
