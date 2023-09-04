@@ -424,8 +424,8 @@ export default {
         endPoint,
       });
     }
-    this.redraw();
     this.onLoad();
+    this.redraw();
   },
 
   // 收到远程撤销笔划

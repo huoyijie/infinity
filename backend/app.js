@@ -245,10 +245,9 @@ io.on('connection', async (socket) => {
     });
 
   // 客户端打开画板后，立刻推送所有涂鸦数据
-  const drawings = await prisma.drawing.findMany({
+  socket.emit('drawings', await prisma.drawing.findMany({
     orderBy: [{ id: 'asc' }],
-  });
-  socket.emit('drawings', drawings);
+  }));
 });
 
 const port = process.env.PORT || 5000;
