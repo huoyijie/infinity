@@ -148,6 +148,7 @@ const basePath = process.env.BASE_PATH || '/';
 const origin = process.env.ALLOW_ORIGIN || '*';
 // 创建 socket.io server
 const io = new Server(httpServer, {
+  perMessageDeflate: true,
   parser: msgpackParser,
   serveClient: false,
   path: path.join(basePath, 'socket.io'),
