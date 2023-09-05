@@ -230,9 +230,15 @@ io.on('connection', async (socket) => {
   const strokes = [];
   let stroke;
   for (const { strokeId, color, opacity, size, beginPointX, beginPointY, ctrlPointX, ctrlPointY, endPointX, endPointY } of ds) {
-    if (!stroke || stroke.id !== strokeId) {
+    if (!stroke) {
       stroke = { id: strokeId, color, opacity, size, drawings: [] };
       strokes.push(stroke);
+    } else if (stroke.id !== strokeId) {
+      stroke = strokes.find(s => s.id === strokeId);
+      if (!stroke) {
+        stroke = { id: strokeId, color, opacity, size, drawings: [] };
+        strokes.push(stroke);
+      }
     }
     stroke.drawings.push({
       bp: { x: beginPointX, y: beginPointY },
