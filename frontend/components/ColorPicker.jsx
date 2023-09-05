@@ -9,25 +9,25 @@ import { HexColorPicker } from 'react-colorful';
 
 const colors = [
   // black
-  'rgb(0 0 0)',
+  '#000',
   // red
-  'rgb(220 38 38)',
+  '#DC2626',
   // orange
-  'rgb(249 115 22)',
+  '#F97316',
   // yellow
-  'rgb(250 204 21)',
+  '#FACC15',
   // green
-  'rgb(34 197 94)',
+  '#22C55E',
   // sky
-  'rgb(56 189 248)',
+  '#38BDF8',
   // blue
-  'rgb(37 99 235)',
+  '#2563EB',
   // purple
-  'rgb(168 85 247)',
+  '#A855F7',
   // fuchsia
-  'rgb(232 121 249)',
+  '#E879F9',
   // pink
-  'rgb(244 114 182)',
+  '#F472B6',
 ];
 
 export default function ({ showColors, showOpacity }) {
