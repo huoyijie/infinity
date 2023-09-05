@@ -222,10 +222,28 @@ io.on('connection', async (socket) => {
 
   // 客户端打开画板后，立刻推送所有涂鸦数据
   const t = new Date().getTime();
+
+  // 从数据库加载 drawings 数据并计时
+  const ds = await prisma.drawing.findMany({ orderBy: [{ id: 'asc' }] });
+  console.log(socket.id, 'load drawings cost', new Date().getTime() - t, 'ms');
+
+  const strokes = [];
+  let stroke;
+  for (const { strokeId, color, opacity, size, beginPointX, beginPointY, ctrlPointX, ctrlPointY, endPointX, endPointY } of ds) {
+    if (!stroke || stroke.id !== strokeId) {
+      stroke = { id: strokeId, color, opacity, size, drawings: [] };
+      strokes.push(stroke);
+    }
+    stroke.drawings.push({
+      bp: { x: beginPointX, y: beginPointY },
+      cp: { x: ctrlPointX, y: ctrlPointY },
+      ep: { x: endPointX, y: endPointY },
+    });
+  }
   socket.emit(
-    'drawings',
-    await prisma.drawing.findMany({ orderBy: [{ id: 'asc' }] }),
-    () => console.log(socket.id, 'sync drawings cost', new Date().getTime() - t, 'ms')
+    'strokes',
+    strokes,
+    () => console.log(socket.id, 'sync strokes cost', new Date().getTime() - t, 'ms')
   );
 });
 

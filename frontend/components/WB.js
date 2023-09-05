@@ -162,7 +162,7 @@ export default {
       path: path.join(basePath, 'socket.io')
     });
     this.socket
-      .on('drawings', (drawings, callback) => that.onRecvDrawings(drawings, callback))
+      .on('strokes', (strokes, callback) => that.onRecvStrokes(strokes, callback))
       .on('drawing', (drawing) => that.onRecvDrawing(drawing))
       .on('undo', (stroke) => that.onUndo(stroke))
       .on('delete', (strokes) => that.onDelete(strokes))
@@ -409,21 +409,19 @@ export default {
   },
 
   // 加载服务器数据，初始化画板
-  onRecvDrawings(drawings, callback) {
+  onRecvStrokes(strokes, callback) {
     callback();
-    for (const drawing of drawings) {
-      const { strokeId, color, opacity, size, beginPointX, beginPointY, ctrlPointX, ctrlPointY, endPointX, endPointY } = drawing;
+    for (const { id: strokeId, color, opacity, size, drawings } of strokes) {
       const pen = { color, opacity, size };
-      const beginPoint = { x: beginPointX, y: beginPointY };
-      const controlPoint = { x: ctrlPointX, y: ctrlPointY };
-      const endPoint = { x: endPointX, y: endPointY };
-      this.updateStroke(strokeId, {
-        strokeId,
-        pen,
-        beginPoint,
-        controlPoint,
-        endPoint,
-      });
+      for (const { bp: beginPoint, cp: controlPoint, ep: endPoint } of drawings) {
+        this.updateStroke(strokeId, {
+          strokeId,
+          pen,
+          beginPoint,
+          controlPoint,
+          endPoint,
+        });
+      }
     }
     this.onLoad();
     this.redraw();
