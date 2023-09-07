@@ -4,6 +4,8 @@ Infinity is An interesting real-time collaborative whiteboard with infinite spac
 
 [Online Demo](https://huoyijie.github.io/infinity/)
 
+![infinity-record](https://cdn.huoyijie.cn/uploads/2023/09/infinity-record.gif)
+
 ![infinity screenshot](https://github.com/huoyijie/infinity/assets/11747704/4e77abf6-52e0-4f18-afd0-29399fe89db2)
 
 一个基于 Node.js 的全栈项目，后端基于 Node.js、Mysql、Prisma (ORM)、Socket.io (MsgPack) 等技术实现。前端基于 Next.js、React、socket.io (MsgPack)、tailwindcss 等技术实现。
